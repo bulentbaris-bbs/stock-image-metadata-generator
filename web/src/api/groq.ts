@@ -59,20 +59,44 @@ export async function groqText(
   return (data?.choices?.[0]?.message?.content ?? '').trim();
 }
 
-const METADATA_PROMPT = `You are a professional stock photo metadata expert. Analyze this image for Adobe Stock, Shutterstock, iStock.
+/** Core instructions; optional REFERENCE block is prepended when hint is non-empty. */
+const METADATA_INSTRUCTIONS = `You are a professional stock photo metadata expert. Analyze this image for Adobe Stock, Shutterstock, iStock.
 
 Consider: current market trends, buyer search behavior, commercial appeal, and SEO best practices.
 Focus on what buyers actually search for on Adobe Stock, Shutterstock, and iStock.
 
-Title (title_en / title_tr):
-- Use the "Who, What, Where, When" formula: one clear sentence (e.g. who is doing what, where, and when if relevant).
-- Ideal length: 5–10 words. No unnecessary embellishments.
-- Natural language: write a meaningful sentence, do NOT stack keywords. Algorithms rank human-like titles higher. Example: "Woman working on laptop in bright modern office" — NOT "Woman laptop office business".
-- Both EN and TR must read naturally.
+Output format (critical): Return ONLY valid JSON with ALL four keys as non-empty strings. Never omit a field. Never use null or empty strings.
+{"title_en":"...","title_tr":"...","description_en":"...","description_tr":"..."}
 
-Description (description_en / description_tr):
-- Longer and more detailed than the title. Include mood, setting, lighting, use-cases, and context.
-- 150–200 characters. Must be DIFFERENT from the title; never copy or repeat the title verbatim.`;
+Title (title_en / title_tr) — what is visible:
+- State clearly what the image is about: main subject, action, and setting. Use "Who, What, Where, When" where helpful (one or two complete sentences if needed).
+- Target: up to 200 characters per title (including spaces). Be specific and complete; avoid vague one-liners when more detail would clarify the topic.
+- Natural prose only; do NOT stack comma-separated keywords or tags. Readable sentences beat keyword lists.
+- Both EN and TR must convey the same meaning.
+
+Description (description_en / description_tr) — complementary detail ONLY (REQUIRED, never empty):
+- The title summarizes the scene; descriptions MUST add different information: e.g. lighting (direction, soft/hard, natural/artificial), mood/atmosphere, color palette or tonal contrast, sense of space or composition (wide vs intimate), implied use cases for buyers (advertising, web, editorial, social). Pick at least two of these dimensions that are not already spelled out in the title.
+- Length: 150–200 characters each (minimum ~120). description_tr must be Turkish; description_en English.
+- Do NOT paste or lightly rephrase the title. No duplicate sentences from the title.`;
+
+/** Prepend strong reference rules so the model sees user intent before long instructions. */
+export function buildMetadataVisionPrompt(hint: string): string {
+  const t = hint.trim();
+  if (!t) return METADATA_INSTRUCTIONS;
+  const safe = JSON.stringify(t);
+  return `REFERENCE — USER NOTE (read first; apply when compatible with the image):
+The user provided this note (string below may be Turkish, English, or mixed):
+${safe}
+
+MANDATORY:
+- When the note aligns with what is clearly visible (subject, setting, mood, intended use, commercial angle, or style), you MUST reflect it in title_en, title_tr, description_en, and description_tr. Paraphrase naturally; integrate meaning—do not ignore the note.
+- If the note contradicts visible facts in the image, ignore the conflicting parts and describe only what the image shows.
+- Do not paste the note verbatim as the entire title or description.
+
+---
+
+${METADATA_INSTRUCTIONS}`;
+}
 
 /** Extract the first complete JSON object from a string (handles trailing text or multiple objects). */
 function extractFirstJsonObject(raw: string): string {
@@ -90,18 +114,65 @@ function extractFirstJsonObject(raw: string): string {
   return '';
 }
 
+async function fillDescriptionsFromTitles(
+  key: string,
+  titleEn: string,
+  titleTr: string,
+  hint: string,
+): Promise<{ description_en: string; description_tr: string } | null> {
+  const ref = hint.trim()
+    ? `\nUser note (must shape tone/topics if compatible): ${JSON.stringify(hint.trim())}`
+    : '';
+  const p = `You are a microstock copywriter. Titles are fixed below. Write ONLY complementary image descriptions in English and Turkish.
+
+Rules:
+- Do NOT repeat or copy the title wording. Add lighting, mood, atmosphere, color/contrast, composition, or typical buyer use cases (ads, web, editorial) that the titles do not already state.
+- Each description 150-200 characters (minimum ~120). description_en in English, description_tr in Turkish.
+- Return ONLY valid JSON: {"description_en":"...","description_tr":"..."}
+
+title_en: ${titleEn}
+title_tr: ${titleTr}${ref}`;
+  try {
+    const raw = await groqText(p, key, 550);
+    const jsonStr = extractFirstJsonObject(raw);
+    if (!jsonStr) return null;
+    const o = JSON.parse(jsonStr) as Record<string, string>;
+    const clip = (s: unknown, max: number) =>
+      typeof s === 'string' ? (s.length > max ? s.slice(0, max) : s) : '';
+    const en = clip(o.description_en, 2000);
+    const tr = clip(o.description_tr, 2000);
+    if (!en.trim() || !tr.trim()) return null;
+    return { description_en: en, description_tr: tr };
+  } catch {
+    return null;
+  }
+}
+
 export async function apiMetadata(
   b64: string,
   key: string,
   hint = ''
 ): Promise<{ title_en: string; title_tr: string; description_en: string; description_tr: string }> {
-  const hintTxt = hint.trim() ? `\n\nEk referans bilgi (mutlaka dikkate al): ${hint}` : '';
-  const prompt = METADATA_PROMPT + hintTxt;
-  const raw = await groqVision(b64, prompt, key, 600);
+  const prompt = buildMetadataVisionPrompt(hint);
+  const raw = await groqVision(b64, prompt, key, 1024);
   const jsonStr = extractFirstJsonObject(raw);
   if (!jsonStr) throw new Error('Invalid response: no JSON');
   try {
-    return JSON.parse(jsonStr);
+    const o = JSON.parse(jsonStr) as Record<string, string>;
+    const clip = (s: unknown, max: number) =>
+      typeof s === 'string' ? (s.length > max ? s.slice(0, max) : s) : '';
+    let title_en = clip(o.title_en, 200);
+    let title_tr = clip(o.title_tr, 200);
+    let description_en = clip(o.description_en, 2000);
+    let description_tr = clip(o.description_tr, 2000);
+    if (!description_en.trim() || !description_tr.trim()) {
+      const filled = await fillDescriptionsFromTitles(key, title_en, title_tr, hint);
+      if (filled) {
+        description_en = filled.description_en;
+        description_tr = filled.description_tr;
+      }
+    }
+    return { title_en, title_tr, description_en, description_tr };
   } catch (e) {
     throw new Error('Invalid response: JSON parse failed');
   }

@@ -153,30 +153,96 @@ def groq_text(prompt, key, max_tokens=500):
     r.raise_for_status()
     return r.json()["choices"][0]["message"]["content"].strip()
 
-def api_metadata(b64, key, hint=""):
-    hint_txt = f"\n\nEk referans bilgi (mutlaka dikkate al): {hint}" if hint.strip() else ""
-    prompt = f"""You are a professional stock photo metadata expert.
-Analyze this image and generate optimized metadata for microstock platforms.{hint_txt}
+METADATA_INSTRUCTIONS = """You are a professional stock photo metadata expert. Analyze this image for Adobe Stock, Shutterstock, iStock.
 
 Consider: current market trends, buyer search behavior, commercial appeal, and SEO best practices.
 Focus on what buyers actually search for on Adobe Stock, Shutterstock, and iStock.
 
-Return ONLY valid JSON, nothing else:
-{{"title_en":"...","title_tr":"...","description_en":"...","description_tr":"..."}}
+Output format (critical): Return ONLY valid JSON with ALL four keys as non-empty strings. Never omit a field. Never use null or empty strings.
+{"title_en":"...","title_tr":"...","description_en":"...","description_tr":"..."}
 
-Title (title_en / title_tr):
-- Use the "Who, What, Where, When" formula: one clear sentence (e.g. who is doing what, where, and when if relevant).
-- Ideal length: 5–10 words. No unnecessary embellishments.
-- Natural language: write a meaningful sentence, do NOT stack keywords. Algorithms rank human-like titles higher. Example: "Woman working on laptop in bright modern office" — NOT "Woman laptop office business".
-- Both EN and TR must read naturally.
+Title (title_en / title_tr) — what is visible:
+- State clearly what the image is about: main subject, action, and setting. Use "Who, What, Where, When" where helpful (one or two complete sentences if needed).
+- Target: up to 200 characters per title (including spaces). Be specific and complete; avoid vague one-liners when more detail would clarify the topic.
+- Natural prose only; do NOT stack comma-separated keywords or tags. Readable sentences beat keyword lists.
+- Both EN and TR must convey the same meaning.
 
-Description (description_en / description_tr):
-- Longer and more detailed than the title. Include mood, setting, lighting, use-cases, and context.
-- 150–200 characters. Must be DIFFERENT from the title; never copy or repeat the title verbatim."""
-    raw = groq_vision(b64, prompt, key, 600)
+Description (description_en / description_tr) — complementary detail ONLY (REQUIRED, never empty):
+- The title summarizes the scene; descriptions MUST add different information: e.g. lighting (direction, soft/hard, natural/artificial), mood/atmosphere, color palette or tonal contrast, sense of space or composition (wide vs intimate), implied use cases for buyers (advertising, web, editorial, social). Pick at least two of these dimensions that are not already spelled out in the title.
+- Length: 150-200 characters each (minimum ~120). description_tr must be Turkish; description_en English.
+- Do NOT paste or lightly rephrase the title. No duplicate sentences from the title."""
+
+def build_metadata_vision_prompt(hint):
+    t = (hint or "").strip()
+    if not t:
+        return METADATA_INSTRUCTIONS
+    safe = json.dumps(t, ensure_ascii=False)
+    return f"""REFERENCE — USER NOTE (read first; apply when compatible with the image):
+The user provided this note (string below may be Turkish, English, or mixed):
+{safe}
+
+MANDATORY:
+- When the note aligns with what is clearly visible (subject, setting, mood, intended use, commercial angle, or style), you MUST reflect it in title_en, title_tr, description_en, and description_tr. Paraphrase naturally; integrate meaning—do not ignore the note.
+- If the note contradicts visible facts in the image, ignore the conflicting parts and describe only what the image shows.
+- Do not paste the note verbatim as the entire title or description.
+
+---
+
+{METADATA_INSTRUCTIONS}"""
+
+def _fill_descriptions_from_titles(key, title_en, title_tr, hint=""):
+    ref = ""
+    if (hint or "").strip():
+        ref = f"\nUser note (must shape tone/topics if compatible): {json.dumps(hint.strip(), ensure_ascii=False)}"
+    prompt = f"""You are a microstock copywriter. Titles are fixed below. Write ONLY complementary image descriptions in English and Turkish.
+
+Rules:
+- Do NOT repeat or copy the title wording. Add lighting, mood, atmosphere, color/contrast, composition, or typical buyer use cases (ads, web, editorial) that the titles do not already state.
+- Each description 150-200 characters (minimum ~120). description_en in English, description_tr in Turkish.
+- Return ONLY valid JSON: {{"description_en":"...","description_tr":"..."}}
+
+title_en: {title_en}
+title_tr: {title_tr}{ref}"""
+    try:
+        raw = groq_text(prompt, key, 550)
+        m = re.search(r"\{.*\}", raw, re.DOTALL)
+        if not m:
+            return None
+        d = json.loads(m.group())
+        def _clip(s, n):
+            return (s or "")[:n] if isinstance(s, str) else ""
+        en = _clip(d.get("description_en"), 2000)
+        tr = _clip(d.get("description_tr"), 2000)
+        if not en.strip() or not tr.strip():
+            return None
+        return {"description_en": en, "description_tr": tr}
+    except Exception:
+        return None
+
+def api_metadata(b64, key, hint=""):
+    prompt = build_metadata_vision_prompt(hint)
+    raw = groq_vision(b64, prompt, key, 1024)
     m = re.search(r'\{.*\}', raw, re.DOTALL)
-    if m: return json.loads(m.group())
-    raise ValueError(f"Geçersiz yanıt: {raw[:200]}")
+    if not m:
+        raise ValueError(f"Geçersiz yanıt: {raw[:200]}")
+    d = json.loads(m.group())
+    def _clip(s, n):
+        return (s or "")[:n] if isinstance(s, str) else ""
+    title_en = _clip(d.get("title_en"), 200)
+    title_tr = _clip(d.get("title_tr"), 200)
+    description_en = _clip(d.get("description_en"), 2000)
+    description_tr = _clip(d.get("description_tr"), 2000)
+    if not description_en.strip() or not description_tr.strip():
+        filled = _fill_descriptions_from_titles(key, title_en, title_tr, hint)
+        if filled:
+            description_en = filled["description_en"]
+            description_tr = filled["description_tr"]
+    return {
+        "title_en": title_en,
+        "title_tr": title_tr,
+        "description_en": description_en,
+        "description_tr": description_tr,
+    }
 
 def api_keywords(b64, key, hint="", platform="general"):
     hint_txt = f"\nExtra context (important): {hint}" if hint.strip() else ""
@@ -219,6 +285,67 @@ def api_translate_kw(kws, key):
         parts = [p.strip() for p in raw.split(",")]
         return (parts + kws)[:len(kws)]
     except: return kws
+
+TR_KW_BATCH_SIZE = 25
+TR_KW_NUMBERED_PROMPT = (
+    "Translate each numbered line to Turkish. Keep the same numbers. "
+    "Return ONLY the numbered Turkish translations, one per line. No other text.\n\n"
+)
+
+def _parse_numbered_lines(raw, fallback):
+    out = list(fallback)
+    for line in raw.split("\n"):
+        line = line.strip()
+        m = re.match(r"^\s*(\d+)\.\s*(.*)$", line)
+        if m:
+            num = int(m.group(1))
+            text = m.group(2).strip() or (fallback[num - 1] if 1 <= num <= len(fallback) else "")
+            if 1 <= num <= len(fallback):
+                out[num - 1] = text or fallback[num - 1]
+    return out
+
+def _translate_kw_chunk_numbered(kws, key):
+    if not kws:
+        return []
+    input_lines = "\n".join(f"{i+1}. {w}" for i, w in enumerate(kws))
+    raw = groq_text(TR_KW_NUMBERED_PROMPT + input_lines, key, 400)
+    return _parse_numbered_lines(raw, kws)
+
+def build_unique_en_list(adobe_en, shutter_en, istock_en):
+    """Collect unique English keywords from all three platform lists (first occurrence order, case-insensitive dedupe)."""
+    seen = set()
+    out = []
+    for lst in (adobe_en, shutter_en, istock_en):
+        for k in lst:
+            t = (k or "").strip()
+            if not t:
+                continue
+            lower = t.lower()
+            if lower in seen:
+                continue
+            seen.add(lower)
+            out.append(t)
+    return out
+
+def api_translate_unique_kw_to_map(unique_en, key):
+    """Translate unique EN keywords and return a dict: lowercase EN -> TR. Same EN always gets same TR."""
+    tr_map = {}
+    if not unique_en:
+        return tr_map
+    for i in range(0, min(len(unique_en), 150), TR_KW_BATCH_SIZE):
+        chunk = unique_en[i : i + TR_KW_BATCH_SIZE]
+        try:
+            tr_chunk = _translate_kw_chunk_numbered(chunk, key)
+            for j, en in enumerate(chunk):
+                tr_map[en.lower()] = tr_chunk[j] if j < len(tr_chunk) else en
+        except Exception:
+            for en in chunk:
+                tr_map[en.lower()] = en
+    return tr_map
+
+def apply_tr_map(en_list, tr_map):
+    """Apply EN->TR map to a keyword list (preserves order; missing keys stay as EN)."""
+    return [tr_map.get((k or "").strip().lower(), (k or "").strip()) if (k or "").strip() else "" for k in en_list]
 
 def api_everypixels(file_path, cid, csec):
     with open(file_path,"rb") as f:
@@ -847,11 +974,13 @@ class App(ctk.CTk):
                 istock_raw = api_keywords(b64,key,hint,"istock")[:ISTOCK_MAX]
                 istock_en  = map_istock(istock_raw)
 
-                # Türkçe çeviriler
+                # Türkçe çeviriler (tek sözlük: aynı EN kelime her platformda aynı TR)
                 self._status("🌐  Türkçeye çevriliyor...")
-                adobe_tr   = api_translate_kw(adobe_en,   key)
-                shutter_tr = api_translate_kw(shutter_en, key)
-                istock_tr  = api_translate_kw(istock_en,  key)
+                unique_en  = build_unique_en_list(adobe_en, shutter_en, istock_en)
+                tr_map     = api_translate_unique_kw_to_map(unique_en, key)
+                adobe_tr   = apply_tr_map(adobe_en, tr_map)
+                shutter_tr = apply_tr_map(shutter_en, tr_map)
+                istock_tr  = apply_tr_map(istock_en, tr_map)
 
                 self.metadata = {
                     "title_en":   meta.get("title_en",""),

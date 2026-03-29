@@ -14,6 +14,7 @@ import {
   type ReactNode,
 } from 'react';
 
+import { apiMetadata } from './api/groq';
 import { apiEverypixels, everypixelToKeywordStrings } from './api/everypixels';
 import { enqueueThumbnail } from './lib/thumbnailQueue';
 
@@ -344,46 +345,6 @@ async function groqText(prompt: string, key: string, maxTokens = 500): Promise<s
   return (data?.choices?.[0]?.message?.content ?? '').trim();
 }
 
-function extractFirstJsonObject(raw: string): string {
-  const start = raw.indexOf('{');
-  if (start === -1) return '';
-  let depth = 0;
-  for (let i = start; i < raw.length; i++) {
-    if (raw[i] === '{') depth++;
-    else if (raw[i] === '}') {
-      depth--;
-      if (depth === 0) return raw.slice(start, i + 1);
-    }
-  }
-  return '';
-}
-
-const METADATA_PROMPT = `You are a professional stock photo metadata expert. Analyze this image and generate optimized metadata for microstock platforms (Adobe Stock, Shutterstock, iStock). Consider: buyer search behavior, commercial appeal, SEO.
-
-Return ONLY valid JSON, nothing else: {"title_en":"...","title_tr":"...","description_en":"...","description_tr":"..."}
-
-Title (title_en / title_tr):
-- Use the "Who, What, Where, When" formula: one clear sentence (e.g. who is doing what, where, and when if relevant).
-- Ideal length: 5–10 words. No unnecessary embellishments.
-- Natural language: write a meaningful sentence, do NOT stack keywords. Algorithms rank human-like titles higher. Example: "Woman working on laptop in bright modern office" — NOT "Woman laptop office business".
-- Both EN and TR must read naturally.
-
-Description (description_en / description_tr):
-- Longer and more detailed than the title. Include mood, setting, lighting, use-cases, and context.
-- 150–200 characters. Must be DIFFERENT from the title; never copy or repeat the title verbatim.`;
-
-async function apiMetadata(
-  b64: string,
-  groqKey: string,
-  hint: string,
-): Promise<{ title_en: string; title_tr: string; description_en: string; description_tr: string }> {
-  const hintTxt = hint.trim() ? `\n\nEk referans bilgi: ${hint}` : '';
-  const raw = await groqVision(b64, METADATA_PROMPT + hintTxt, groqKey, 600);
-  const jsonStr = extractFirstJsonObject(raw);
-  if (!jsonStr) throw new Error('Invalid response: no JSON');
-  return JSON.parse(jsonStr);
-}
-
 const KEYWORDS_BY_PLATFORM: Record<string, string> = {
   adobe: 'Adobe Stock (max 49 keywords)',
   shutterstock: 'Shutterstock (max 50 keywords)',
@@ -408,7 +369,7 @@ Also consider: buyer trends (2024-2025), commercial use (advertising, editorial,
 Output format (critical): Your response must be exactly one line of comma-separated keywords. No introductory phrase (e.g. no "Here are the keywords:"), no sentences, no bullet points, no story text. Example: wind turbine, power line, renewable energy, sustainability, outdoor, sunset. Generate exactly 50 keywords.`;
 
 async function apiKeywords(b64: string, key: string, hint: string, platform: 'adobe' | 'shutterstock' | 'istock'): Promise<string[]> {
-  const hintTxt = hint.trim() ? `\nExtra context: ${hint}` : '';
+  const hintTxt = hint.trim() ? `\nExtra context (important): ${hint}` : '';
   const prompt = KEYWORDS_PROMPT.replace('{platform}', KEYWORDS_BY_PLATFORM[platform] ?? 'microstock').replace('{hint}', hintTxt);
   const raw = await groqVision(b64, prompt, key, 450);
   const kws = raw.replace(/["'*\-\n\d.]/g, '').split(',').map((k) => k.trim()).filter(Boolean);
@@ -464,6 +425,62 @@ async function apiTranslateKwNumbered(kws: string[], key: string): Promise<strin
   return out;
 }
 
+/** Collect unique English keywords from all three platform lists (first occurrence order, case-insensitive dedupe). */
+function buildUniqueEnList(adobeEn: string[], shutterEn: string[], istockEn: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const list of [adobeEn, shutterEn, istockEn]) {
+    for (const k of list) {
+      const t = (k ?? '').trim();
+      if (!t) continue;
+      const lower = t.toLowerCase();
+      if (seen.has(lower)) continue;
+      seen.add(lower);
+      out.push(t);
+    }
+  }
+  return out;
+}
+
+/** Translate a list of unique EN keywords and return a map: lowercase EN -> TR. Same EN always gets same TR. */
+async function apiTranslateUniqueKwToMap(uniqueEn: string[], key: string): Promise<Map<string, string>> {
+  const trMap = new Map<string, string>();
+  if (uniqueEn.length === 0) return trMap;
+  const list = uniqueEn.slice(0, 150);
+  for (let i = 0; i < list.length; i += TR_KW_BATCH_SIZE) {
+    const chunk = list.slice(i, i + TR_KW_BATCH_SIZE);
+    try {
+      const input = chunk.map((w, j) => `${j + 1}. ${w}`).join('\n');
+      const raw = await groqText(TR_KW_NUMBERED_PROMPT + input, key, 400);
+      const trChunk = parseNumberedLines(raw, chunk);
+      for (let j = 0; j < chunk.length; j++) {
+        trMap.set(chunk[j].toLowerCase(), trChunk[j] ?? chunk[j]);
+      }
+    } catch {
+      for (const w of chunk) trMap.set(w.toLowerCase(), w);
+    }
+  }
+  return trMap;
+}
+
+/** Apply EN->TR map to a keyword list (preserves order; missing keys stay as EN). */
+function applyTrMap(enList: string[], trMap: Map<string, string>): string[] {
+  return enList.map((en) => {
+    const t = (en ?? '').trim();
+    if (!t) return '';
+    return trMap.get(t.toLowerCase()) ?? t;
+  });
+}
+
+const TR_TRANSLATE_PROMPT = 'Translate the following to Turkish. Return only the Turkish text, no explanation or quotes.\n\n';
+
+async function apiTranslateToTurkish(text: string, key: string): Promise<string> {
+  const t = (text ?? '').trim();
+  if (!t) return '';
+  const raw = await groqText(TR_TRANSLATE_PROMPT + t, key, 400);
+  return (raw ?? '').trim() || t;
+}
+
 // ─── Context ───────────────────────────────────────────────────────────────
 interface AppState {
   files: FileEntry[];
@@ -483,8 +500,9 @@ interface AppActions {
   toggleSelection: (id: string) => void;
   selectAll: () => void;
   deselectAll: () => void;
-  setMetadata: (id: string, r: MetadataRecord) => void;
+  setMetadata: (id: string, r: MetadataRecord, options?: { skipUndo?: boolean }) => void;
   updateMetadata: (id: string, patch: Partial<MetadataRecord>) => void;
+  undo: () => void;
   setSettings: (s: Settings) => void;
   saveSettings: (s: Settings) => void;
   setIstockMap: (m: IStockMap) => void;
@@ -492,6 +510,8 @@ interface AppActions {
   setHint: (h: string) => void;
   downloadCsvExport: () => void;
   refreshTurkish: (fileId: string, keys: { en: KeywordKey; tr: KeywordKey }, enFull: string[]) => Promise<void>;
+  refreshTurkishTitleDescription: (fileId: string, record?: MetadataRecord | null) => Promise<void>;
+  refreshTurkishAllKeywords: (fileId: string) => Promise<void>;
 }
 
 type KeywordKey = 'adobe_keywords_en' | 'adobe_keywords_tr' | 'shutter_keywords_en' | 'shutter_keywords_tr' | 'istock_keywords_en' | 'istock_keywords_tr';
@@ -508,6 +528,7 @@ function AppProvider({ children }: { children: ReactNode }) {
   const [settings, setSettingsState] = useState<Settings>(loadSettings());
   const [istockMap, setIstockMapState] = useState<IStockMap>(loadIStockMap());
   const [hint, setHint] = useState('');
+  const lastUndoRef = useRef<{ fileId: string; record: MetadataRecord } | null>(null);
 
   const setFiles = useCallback((f: FileEntry[]) => setFilesState(f), []);
   const toggleSelection = useCallback((id: string) => {
@@ -541,8 +562,9 @@ function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const setMetadata = useCallback((id: string, record: MetadataRecord) => {
+  const setMetadata = useCallback((id: string, record: MetadataRecord, options?: { skipUndo?: boolean }) => {
     setMetadataByFileId((prev) => {
+      if (!options?.skipUndo && prev[id]) lastUndoRef.current = { fileId: id, record: prev[id] };
       const next = { ...prev, [id]: record };
       if (typeof window !== 'undefined') saveMetadataByFileId(next);
       return next;
@@ -553,7 +575,20 @@ function AppProvider({ children }: { children: ReactNode }) {
     setMetadataByFileId((prev) => {
       const current = prev[id];
       if (!current) return prev;
+      if (current) lastUndoRef.current = { fileId: id, record: current };
       const next = { ...prev, [id]: { ...current, ...patch } };
+      if (typeof window !== 'undefined') saveMetadataByFileId(next);
+      return next;
+    });
+  }, []);
+
+  const undo = useCallback(() => {
+    const slot = lastUndoRef.current;
+    if (!slot) return;
+    setMetadataByFileId((prev) => {
+      if (prev[slot.fileId] === undefined) return prev;
+      lastUndoRef.current = null;
+      const next = { ...prev, [slot.fileId]: slot.record };
       if (typeof window !== 'undefined') saveMetadataByFileId(next);
       return next;
     });
@@ -596,21 +631,65 @@ function AppProvider({ children }: { children: ReactNode }) {
           trFull.push('');
         }
       }
-      setMetadata(fileId, { ...record, [keys.tr]: trFull });
+      updateMetadata(fileId, { [keys.tr]: trFull });
     },
-    [metadataByFileId, setMetadata, settings.groq_api_key],
+    [metadataByFileId, updateMetadata, settings.groq_api_key],
+  );
+
+  const refreshTurkishAllKeywords = useCallback(
+    async (fileId: string) => {
+      const record = metadataByFileId[fileId];
+      if (!record) return;
+      const key = settings.groq_api_key?.trim();
+      if (!key) return;
+      const adobeEn = (record.adobe_keywords_en ?? []).map((k) => (k ?? '').trim()).filter(Boolean);
+      const shutterEn = (record.shutter_keywords_en ?? []).map((k) => (k ?? '').trim()).filter(Boolean);
+      const istockEn = (record.istock_keywords_en ?? []).map((k) => (k ?? '').trim()).filter(Boolean);
+      const adobeEnFull = record.adobe_keywords_en ?? [];
+      const shutterEnFull = record.shutter_keywords_en ?? [];
+      const istockEnFull = record.istock_keywords_en ?? [];
+      if (adobeEn.length === 0 && shutterEn.length === 0 && istockEn.length === 0) return;
+      const uniqueEn = buildUniqueEnList(adobeEnFull, shutterEnFull, istockEnFull);
+      const trMap = await apiTranslateUniqueKwToMap(uniqueEn, key);
+      updateMetadata(fileId, {
+        adobe_keywords_tr: applyTrMap(adobeEnFull, trMap),
+        shutter_keywords_tr: applyTrMap(shutterEnFull, trMap),
+        istock_keywords_tr: applyTrMap(istockEnFull, trMap),
+      });
+    },
+    [metadataByFileId, updateMetadata, settings.groq_api_key],
+  );
+
+  const refreshTurkishTitleDescription = useCallback(
+    async (fileId: string, recordFromCaller?: MetadataRecord | null) => {
+      const record = recordFromCaller ?? metadataByFileId[fileId];
+      if (!record) return;
+      const key = settings.groq_api_key?.trim();
+      if (!key) return;
+      const patch: Partial<MetadataRecord> = {};
+      if ((record.title_en ?? '').trim()) {
+        patch.title_tr = await apiTranslateToTurkish(record.title_en, key);
+      }
+      if ((record.description_en ?? '').trim()) {
+        patch.description_tr = await apiTranslateToTurkish(record.description_en, key);
+      }
+      if (Object.keys(patch).length > 0) {
+        updateMetadata(fileId, patch);
+      }
+    },
+    [metadataByFileId, settings.groq_api_key, updateMetadata],
   );
 
   const value = useMemo(
     () => ({
       files, currentFileId, selectedIds, metadataByFileId, settings, istockMap, hint,
       setFiles, addFiles, setCurrentFileId, toggleSelection, selectAll, deselectAll,
-      setMetadata, updateMetadata,
+      setMetadata, updateMetadata, undo,
       setSettings: (s: Settings) => setSettingsState(s), saveSettings: saveSettingsAction,
       setIstockMap: (m: IStockMap) => setIstockMapState(m), saveIstockMap: saveIstockMapAction,
-      setHint, downloadCsvExport, refreshTurkish,
+      setHint, downloadCsvExport, refreshTurkish, refreshTurkishTitleDescription, refreshTurkishAllKeywords,
     }),
-    [files, currentFileId, selectedIds, metadataByFileId, settings, istockMap, hint, saveSettingsAction, saveIstockMapAction, downloadCsvExport, refreshTurkish]
+    [files, currentFileId, selectedIds, metadataByFileId, settings, istockMap, hint, saveSettingsAction, saveIstockMapAction, downloadCsvExport, refreshTurkish, refreshTurkishTitleDescription, refreshTurkishAllKeywords, undo]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -649,13 +728,13 @@ function Toolbar({
         <input type="text" value={hint} onChange={(e) => setHint(e.target.value)} placeholder="AI'ya ek ipucu..." className="flex-1 min-w-0 w-0 bg-transparent border-0 text-text text-sm placeholder-text3 outline-none" />
       </div>
       <div className="flex items-center gap-2 flex-nowrap overflow-x-auto whitespace-nowrap shrink-0">
-        <button type="button" onClick={onGenerate} disabled={generating} className="h-9 px-4 rounded-lg bg-accent hover:bg-accentH text-white font-semibold text-sm disabled:opacity-50">
+        <button type="button" onClick={onGenerate} disabled={generating} className="btn-press h-9 px-4 rounded-lg bg-accent hover:bg-accentH text-white font-semibold text-sm disabled:opacity-50">
           {generating ? `⏳ Üretiliyor…${progressLabel}` : '⚡ Metadata Üret'}
         </button>
         <div className="w-px h-7 bg-border" />
-        <button type="button" onClick={onOpenIStock} className="h-9 px-3 rounded-lg bg-card2 hover:bg-hover text-text2 text-sm">📚 iStock</button>
+        <button type="button" onClick={onOpenIStock} className="btn-press h-9 px-3 rounded-lg bg-card2 hover:bg-hover text-text2 text-sm">📚 iStock</button>
         <div className="w-px h-7 bg-border" />
-        <button type="button" onClick={onOpenSettings} className="h-9 px-3 rounded-lg bg-card2 hover:bg-hover text-text2 text-sm">⚙ Ayarlar</button>
+        <button type="button" onClick={onOpenSettings} className="btn-press h-9 px-3 rounded-lg bg-card2 hover:bg-hover text-text2 text-sm">⚙ Ayarlar</button>
       </div>
     </header>
   );
@@ -721,14 +800,14 @@ function Thumbnail({
       <button
         type="button"
         onClick={onClick}
-        className={`w-full text-left rounded-lg p-1.5 border-2 transition-colors ${selected ? 'bg-sel border-accent' : 'border-transparent bg-card hover:bg-hover'}`}
+        className={`btn-press w-full text-left rounded-lg p-1.5 border-2 transition-colors ${selected ? 'bg-sel border-accent' : 'border-transparent bg-card hover:bg-hover'}`}
       >
         <div className="relative rounded overflow-hidden bg-bg flex items-center justify-center" style={{ width: THUMB_W, height: THUMB_H }}>
           <button
             type="button"
             aria-label={selectedForBatch ? 'Seçimi kaldır' : 'Toplu işleme için seç'}
             onClick={(e) => { e.stopPropagation(); onToggleBatch(); }}
-            className="absolute left-1 top-1 z-10 rounded border border-border bg-card/90 hover:bg-hover w-5 h-5 flex items-center justify-center text-text2 shadow"
+            className="btn-press absolute left-1 top-1 z-10 rounded border border-border bg-card/90 hover:bg-hover w-5 h-5 flex items-center justify-center text-text2 shadow"
           >
             {selectedForBatch ? <span className="text-green text-sm">✓</span> : null}
           </button>
@@ -792,7 +871,7 @@ function FileList() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <button type="button" onClick={() => folderInputRef.current?.click()} className="h-10 rounded-lg bg-card2 hover:bg-sel text-text font-semibold text-sm border border-border mb-1">📁 Select folder</button>
+      <button type="button" onClick={() => folderInputRef.current?.click()} className="btn-press h-10 rounded-lg bg-card2 hover:bg-sel text-text font-semibold text-sm border border-border mb-1">📁 Select folder</button>
       <input ref={folderInputRef} type="file" multiple accept=".jpg,.jpeg,.mov,.mp4" onChange={handleFolderChange} className="hidden" />
       <div className="text-text3 text-xs mb-0.5 flex items-center gap-2 min-w-0" title={folderName || undefined}>
         <span className="truncate min-w-0">{files.length ? (folderName ? `📁 ${folderName}` : `📁 ${files.length} files`) : 'No folder selected'}</span>
@@ -801,9 +880,9 @@ function FileList() {
       </div>
       {files.length > 0 && (
         <div className="flex items-center gap-2 mb-1">
-          <button type="button" onClick={selectAll} className="text-text3 hover:text-text text-xs">Tümünü seç</button>
+          <button type="button" onClick={selectAll} className="btn-press text-text3 hover:text-text text-xs rounded px-0.5">Tümünü seç</button>
           <span className="text-text3 text-xs">|</span>
-          <button type="button" onClick={deselectAll} className="text-text3 hover:text-text text-xs">Seçimi kaldır</button>
+          <button type="button" onClick={deselectAll} className="btn-press text-text3 hover:text-text text-xs rounded px-0.5">Seçimi kaldır</button>
           {selectedIds.size > 0 && <span className="text-green text-xs ml-1">({selectedIds.size} seçili)</span>}
         </div>
       )}
@@ -826,7 +905,7 @@ function FileList() {
         })}
       </div>
       <div className="border-t border-border mt-2 pt-2">
-        <button type="button" onClick={downloadCsvExport} className="w-full h-9 rounded-lg bg-greenBg hover:bg-[#143020] text-green font-semibold text-sm">💾 Download CSV</button>
+        <button type="button" onClick={downloadCsvExport} className="btn-press w-full h-9 rounded-lg bg-greenBg hover:bg-[#143020] text-green font-semibold text-sm">💾 Download CSV</button>
       </div>
     </div>
   );
@@ -859,7 +938,7 @@ function Field({ label, lang, value, onChange, multiline }: { label: string; lan
               <button
                 type="button"
                 onClick={() => navigator.clipboard.writeText(value)}
-                className="text-xs font-bold px-1.5 py-0.5 rounded flex items-center gap-1 hover:brightness-110"
+                className="btn-press text-xs font-bold px-1.5 py-0.5 rounded flex items-center gap-1 hover:brightness-110"
                 style={{ backgroundColor: badgeBg, color: badgeFg }}
               >
                 <span>EN</span>
@@ -888,7 +967,7 @@ function Field({ label, lang, value, onChange, multiline }: { label: string; lan
             <button
               type="button"
               onClick={() => navigator.clipboard.writeText(value)}
-              className="text-xs font-bold px-1.5 py-0.5 rounded shrink-0 flex items-center gap-1 hover:brightness-110"
+              className="btn-press text-xs font-bold px-1.5 py-0.5 rounded shrink-0 flex items-center gap-1 hover:brightness-110"
               style={{ backgroundColor: badgeBg, color: badgeFg }}
             >
               <span>EN</span>
@@ -1007,7 +1086,7 @@ function KeywordTabs({ onError }: { onError?: (msg: string) => void }) {
   const [activeTab, setActiveTab] = useState<TabId>('adobe');
   const [refreshingTr, setRefreshingTr] = useState(false);
   const [keywordFilter, setKeywordFilter] = useState('');
-  const { currentFileId, metadataByFileId, updateMetadata, istockMap, saveIstockMap, refreshTurkish } = useApp();
+  const { currentFileId, metadataByFileId, updateMetadata, istockMap, saveIstockMap, refreshTurkishTitleDescription, refreshTurkishAllKeywords } = useApp();
   const originalIstockEnRef = useRef<{ fileId: string; en: string[] }>({ fileId: '', en: [] });
   useEffect(() => {
     if (!currentFileId) return;
@@ -1041,13 +1120,15 @@ function KeywordTabs({ onError }: { onError?: (msg: string) => void }) {
     }
     saveIstockMap(next);
   };
+  const hasSomethingToRefresh =
+    enKeywords.length > 0 || (record.title_en ?? '').trim() !== '' || (record.description_en ?? '').trim() !== '';
   const handleRefreshTurkish = async () => {
-    if (!currentFileId || !enKeywords.length) return;
-    const enFull = (record[keys.en] as string[]) ?? [];
+    if (!currentFileId || !hasSomethingToRefresh) return;
     setRefreshingTr(true);
     onError?.('');
     try {
-      await refreshTurkish(currentFileId, keys, enFull);
+      await refreshTurkishTitleDescription(currentFileId, record);
+      await refreshTurkishAllKeywords(currentFileId);
     } catch (e) {
       onError?.(e instanceof Error ? e.message : 'Türkçe güncellenemedi');
     } finally {
@@ -1063,7 +1144,7 @@ function KeywordTabs({ onError }: { onError?: (msg: string) => void }) {
               key={t.id}
               type="button"
               onClick={() => setActiveTab(t.id)}
-              className={`px-2.5 py-1 rounded-lg text-sm font-medium ${
+              className={`btn-press px-2.5 py-1 rounded-lg text-sm font-medium ${
                 activeTab === t.id ? 'bg-accent text-white' : 'bg-transparent text-text2 hover:bg-hover'
               }`}
             >
@@ -1071,19 +1152,19 @@ function KeywordTabs({ onError }: { onError?: (msg: string) => void }) {
             </button>
           ))}
         </div>
-        <button type="button" onClick={handleCopyEn} className="ml-2 px-3 py-1 rounded-md bg-card2 border border-border text-xs text-text2 hover:text-text">EN ⎘</button>
+        <button type="button" onClick={handleCopyEn} className="btn-press ml-2 px-3 py-1 rounded-md bg-card2 border border-border text-xs text-text2 hover:text-text">EN ⎘</button>
         {activeTab === 'istock' && (
           <>
-            <button type="button" onClick={handleAddToLibrary} disabled={!enKeywords.length} className="ml-2 px-3 py-1 rounded-md bg-[#2a1060] hover:bg-[#3a1880] disabled:opacity-50 text-[#c4b5fd] text-xs" title="Mevcut iStock EN anahtar kelimelerini kütüphaneye ekle">Kütüphaneye Ekle</button>
-            <button type="button" onClick={() => { const mapped = (record.istock_keywords_en ?? []).map((k) => istockMap[k.toLowerCase().trim()] ?? k); const en = [...new Set(mapped)]; updateMetadata(currentFileId, { istock_keywords_en: en }); }} className="ml-2 px-3 py-1 rounded-md bg-[#2a1060] hover:bg-[#3a1880] text-[#c4b5fd] text-xs" title="Kütüphane eşleşmelerini uygula">iStock Eşleştir</button>
+            <button type="button" onClick={handleAddToLibrary} disabled={!enKeywords.length} className="btn-press ml-2 px-3 py-1 rounded-md bg-[#2a1060] hover:bg-[#3a1880] disabled:opacity-50 text-[#c4b5fd] text-xs" title="Mevcut iStock EN anahtar kelimelerini kütüphaneye ekle">Kütüphaneye Ekle</button>
+            <button type="button" onClick={() => { const mapped = (record.istock_keywords_en ?? []).map((k) => istockMap[k.toLowerCase().trim()] ?? k); const en = [...new Set(mapped)]; updateMetadata(currentFileId, { istock_keywords_en: en }); }} className="btn-press ml-2 px-3 py-1 rounded-md bg-[#2a1060] hover:bg-[#3a1880] text-[#c4b5fd] text-xs" title="Kütüphane eşleşmelerini uygula">iStock Eşleştir</button>
           </>
         )}
-        <button type="button" onClick={handleRefreshTurkish} disabled={!enKeywords.length || refreshingTr} className="ml-2 px-3 py-1 rounded-md bg-card2 border border-border text-text2 hover:text-text text-xs disabled:opacity-50" title="Mevcut İngilizce kelimelere göre Türkçe karşılıkları yeniden çevir">{refreshingTr ? '⏳' : ''} Türkçeyi güncelle</button>
+        <button type="button" onClick={handleRefreshTurkish} disabled={!hasSomethingToRefresh || refreshingTr} className="btn-press ml-2 px-3 py-1 rounded-md bg-card2 border border-border text-text2 hover:text-text text-xs disabled:opacity-50" title="Başlık, açıklama ve anahtar kelimelerin Türkçe karşılıklarını İngilizce metne göre yeniden çevir">{refreshingTr ? '⏳' : ''} Türkçeyi güncelle</button>
         <span className="ml-auto text-xs text-text3">max {tab.maxKw}</span>
       </div>
       <div className="flex items-center gap-2 mb-1.5">
         <input type="text" value={keywordFilter} onChange={(e) => setKeywordFilter(e.target.value)} placeholder="Anahtar kelime ara (EN/TR)..." className="flex-1 h-8 rounded-lg bg-input border border-border text-text text-sm px-3 outline-none focus:ring-1 focus:ring-accent placeholder-text3" />
-        {keywordFilter.trim() && <button type="button" onClick={() => setKeywordFilter('')} className="h-8 px-2 rounded-lg text-text3 hover:text-text text-sm" title="Filtreyi temizle">✕</button>}
+        {keywordFilter.trim() && <button type="button" onClick={() => setKeywordFilter('')} className="btn-press h-8 px-2 rounded-lg text-text3 hover:text-text text-sm" title="Filtreyi temizle">✕</button>}
       </div>
       <div className="flex-1 min-h-0 flex flex-col">
         <KeywordListSynced keys={keys} maxKw={tab.maxKw} record={record} onUpdateEn={(kw) => updateMetadata(currentFileId, { [keys.en]: kw })} onUpdateTr={(kw) => updateMetadata(currentFileId, { [keys.tr]: kw })} filter={keywordFilter} />
@@ -1120,7 +1201,7 @@ function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }
           <div className="flex items-center gap-3"><label className="text-text2 w-48 text-sm">Everypixels Client ID</label><input type="text" value={epId} onChange={(e) => setEpId(e.target.value)} className="flex-1 h-9 rounded-lg bg-input border border-border text-text text-sm px-3 outline-none focus:ring-1 focus:ring-accent" /></div>
           <div className="flex items-center gap-3"><label className="text-text2 w-48 text-sm">Everypixels Client Secret</label><input type="password" value={epSecret} onChange={(e) => setEpSecret(e.target.value)} placeholder="••••••••" className="flex-1 h-9 rounded-lg bg-input border border-border text-text text-sm px-3 outline-none focus:ring-1 focus:ring-accent" /></div>
         </div>
-        <button type="button" onClick={handleSave} className="mt-4 w-full h-9 rounded-lg bg-accent hover:bg-accentH text-white font-semibold">💾 Kaydet</button>
+        <button type="button" onClick={handleSave} className="btn-press mt-4 w-full h-9 rounded-lg bg-accent hover:bg-accentH text-white font-semibold">💾 Kaydet</button>
       </div>
     </div>
   );
@@ -1160,7 +1241,7 @@ function IStockModal({ open, onClose }: { open: boolean; onClose: () => void }) 
             <input type="text" value={generic} onChange={(e) => setGeneric(e.target.value)} placeholder="Generic word" className="flex-1 h-9 rounded-lg bg-input border border-border text-text text-sm px-3 outline-none" />
             <span className="text-text2 self-center">→</span>
             <input type="text" value={istock} onChange={(e) => setIstock(e.target.value)} placeholder="iStock equivalent" className="flex-1 h-9 rounded-lg bg-input border border-border text-text text-sm px-3 outline-none" />
-            <button type="button" onClick={handleAdd} className="h-9 px-4 rounded-lg bg-accent hover:bg-accentH text-white text-sm font-medium">+ Add</button>
+            <button type="button" onClick={handleAdd} className="btn-press h-9 px-4 rounded-lg bg-accent hover:bg-accentH text-white text-sm font-medium">+ Add</button>
           </div>
           {existingIstock !== undefined && (
             <p className="text-xs text-text3">
@@ -1174,7 +1255,7 @@ function IStockModal({ open, onClose }: { open: boolean; onClose: () => void }) 
               <span className="text-text2 truncate flex-1">{gen}</span>
               <span className="text-[#5b9af8] truncate flex-1 text-center">→</span>
               <span className="text-[#5b9af8] truncate flex-1">{ist}</span>
-              <button type="button" onClick={() => handleRemove(gen)} className="text-red-400 hover:text-red-300 ml-2 px-2 py-1 rounded text-sm">✕</button>
+              <button type="button" onClick={() => handleRemove(gen)} className="btn-press text-red-400 hover:text-red-300 ml-2 px-2 py-1 rounded text-sm">✕</button>
             </div>
           ))}
         </div>
@@ -1185,7 +1266,7 @@ function IStockModal({ open, onClose }: { open: boolean; onClose: () => void }) 
 
 // ─── App ───────────────────────────────────────────────────────────────────
 function AppContent() {
-  const { files, currentFileId, setCurrentFileId, selectedIds, metadataByFileId, setMetadata, settings, hint, istockMap } = useApp();
+  const { files, currentFileId, setCurrentFileId, selectedIds, metadataByFileId, setMetadata, undo, settings, hint, istockMap } = useApp();
   const [generating, setGenerating] = useState(false);
   const [generatingProgress, setGeneratingProgress] = useState<{ current: number; total: number } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -1196,6 +1277,69 @@ function AppContent() {
   useEffect(() => {
     if (currentFileId && currentEntry && !metadataByFileId[currentFileId]) setMetadata(currentFileId, emptyRecord(currentEntry.name));
   }, [currentFileId, currentEntry, metadataByFileId, setMetadata]);
+
+  // Keyboard: Cmd/Ctrl+C copy metadata, Cmd/Ctrl+V paste metadata, arrows navigate images
+  useEffect(() => {
+    const isFormField = () => {
+      const el = document.activeElement;
+      return el && ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName);
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isFormField()) return;
+
+      const isCopy = (e.key === 'c' || e.key === 'C') && (e.metaKey || e.ctrlKey);
+      const isPaste = (e.key === 'v' || e.key === 'V') && (e.metaKey || e.ctrlKey);
+      const isUndo = (e.key === 'z' || e.key === 'Z') && (e.metaKey || e.ctrlKey) && !e.shiftKey;
+      const isArrow = ['ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowDown'].includes(e.key);
+
+      if (isUndo) {
+        undo();
+        e.preventDefault();
+        return;
+      }
+      if (isCopy && currentFileId) {
+        const record = metadataByFileId[currentFileId];
+        const hasMeta = record && (record.title_en || record.title_tr || (record.adobe_keywords_en?.length ?? 0) > 0);
+        if (hasMeta) {
+          e.preventDefault();
+          navigator.clipboard.writeText(JSON.stringify(record));
+        }
+        return;
+      }
+      if (isPaste && currentFileId && currentEntry) {
+        e.preventDefault();
+        navigator.clipboard.readText().then((text) => {
+          try {
+            const parsed = JSON.parse(text) as unknown;
+            if (parsed && typeof parsed === 'object' && (Array.isArray((parsed as MetadataRecord).adobe_keywords_en) || 'title_en' in (parsed as MetadataRecord))) {
+              const record = parsed as MetadataRecord;
+              setMetadata(currentFileId, { ...record, file_name: currentEntry.name });
+            }
+          } catch {
+            // ignore invalid paste
+          }
+        });
+        return;
+      }
+      if (isArrow && files.length > 0) {
+        const idx = files.findIndex((f) => f.id === currentFileId);
+        if (idx < 0) return;
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+          if (idx > 0) {
+            e.preventDefault();
+            setCurrentFileId(files[idx - 1].id);
+          }
+        } else {
+          if (idx < files.length - 1) {
+            e.preventDefault();
+            setCurrentFileId(files[idx + 1].id);
+          }
+        }
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [files, currentFileId, currentEntry, metadataByFileId, setMetadata, setCurrentFileId, undo]);
 
   const mapIstock = useCallback((kws: string[]) => kws.map((k) => istockMap[k.toLowerCase().trim()] ?? k), [istockMap]);
 
@@ -1255,11 +1399,11 @@ function AppContent() {
 
         const [enResult, meta] = await Promise.all([getEnKeywords(), apiMetadata(b64, key, hintText)]);
         const { adobeEn, shutterEn, istockEn } = enResult;
-        const [adobeTr, shutterTr, istockTr] = await Promise.all([
-          apiTranslateKwNumbered(adobeEn, key),
-          apiTranslateKwNumbered(shutterEn, key),
-          apiTranslateKwNumbered(istockEn, key),
-        ]);
+        const uniqueEn = buildUniqueEnList(adobeEn, shutterEn, istockEn);
+        const trMap = await apiTranslateUniqueKwToMap(uniqueEn, key);
+        const adobeTr = applyTrMap(adobeEn, trMap);
+        const shutterTr = applyTrMap(shutterEn, trMap);
+        const istockTr = applyTrMap(istockEn, trMap);
         const record: MetadataRecord = {
           file_name: entry.name,
           created_at: new Date().toISOString().slice(0, 16).replace('T', ' '),

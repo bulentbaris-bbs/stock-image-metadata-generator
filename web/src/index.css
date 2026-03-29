@@ -27,3 +27,19 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* Clear click / tap feedback for buttons */
+.btn-press {
+  transition: transform 100ms ease, filter 100ms ease;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+.btn-press:active:not(:disabled) {
+  transform: scale(0.98);
+  filter: brightness(0.92);
+}
+.btn-press:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-accent);
+}
