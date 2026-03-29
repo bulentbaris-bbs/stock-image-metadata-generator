@@ -355,18 +355,20 @@ const KEYWORDS_PROMPT = `You are a microstock SEO expert. Generate optimized Eng
 
 First, interpret the image as a story in your mind only (who, what, why, when, where, concept). Do NOT output this story or any explanation—use it only internally to choose keywords.
 
-Then generate keywords that reflect this story: who/what first (specific subject), then category, then place/time, then concepts (why, inspiration). Put the 10 most story-critical terms first.
+Two-tier list (critical for ranking and automation):
+- Keywords 1–10 (FIRST in the comma-separated list): Scene anchors — highest commercial value. Specific activity, place/region or sea if visible, main subject, equipment, setting, industry. Avoid vague filler in positions 1–10.
+- Keywords 11–50: Broader conceptual / thematic terms (mood, season, travel, compliance, freedom, discovery, risk, vacation, etc.) that buyers still search. Do not repeat the same wording as 1–10; add new angles.
 
 Keyword rules (follow strictly):
-- Hierarchical order: Put the 10 most important keywords FIRST. Adobe Stock and Getty rank early positions higher; order by importance.
-- Specific to general order: (1) Specific subject (e.g. Golden Retriever), (2) Category (e.g. Dog, Pet), (3) Concepts (e.g. Loyalty, Friendship).
+- Order strictly: positions 1–10 = anchors; 11–50 = conceptual expansion. Adobe Stock and Getty rank early positions higher.
+- Specific to general: (1) Specific subject/activity, (2) Place/setting/industry, (3) Objects/gear, (4) Then concepts/themes.
 - Use singular form only; do not add plural variants (e.g. "dog" not "dogs") to save the keyword limit.
-- Include conceptual tags that reflect the mood or message (e.g. Loneliness, Success, Sustainability); these are highly searched by agencies.
+- Include conceptual tags that reflect the mood or message in positions 11–50 (e.g. discovery, compliance, freedom).
 - Only tag what is clearly visible and central to the image; do not add small background objects or elements that are not the main subject.
 
 Also consider: buyer trends (2024-2025), commercial use (advertising, editorial, web, print), emotions, technical aspects, location/demographics if visible.
 
-Output format (critical): Your response must be exactly one line of comma-separated keywords. No introductory phrase (e.g. no "Here are the keywords:"), no sentences, no bullet points, no story text. Example: wind turbine, power line, renewable energy, sustainability, outdoor, sunset. Generate exactly 50 keywords.`;
+Output format (critical): Your response must be exactly one line of comma-separated keywords. No introductory phrase (e.g. no "Here are the keywords:"), no sentences, no bullet points, no story text. Example: freediving, underwater, Halkidiki, Greece, marine life, Aegean sea, clear water, diving, adventure, action camera, discovery, extreme sport, nature, summer, freedom, vacation, travel, deep. Generate exactly 50 keywords.`;
 
 async function apiKeywords(b64: string, key: string, hint: string, platform: 'adobe' | 'shutterstock' | 'istock'): Promise<string[]> {
   const hintTxt = hint.trim() ? `\nExtra context (important): ${hint}` : '';

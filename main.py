@@ -161,14 +161,17 @@ Focus on what buyers actually search for on Adobe Stock, Shutterstock, and iStoc
 Output format (critical): Return ONLY valid JSON with ALL four keys as non-empty strings. Never omit a field. Never use null or empty strings.
 {"title_en":"...","title_tr":"...","description_en":"...","description_tr":"..."}
 
-Title (title_en / title_tr) — what is visible:
+Title (title_en / title_tr) — what is visible (agency-style, buyer-facing):
 - State clearly what the image is about: main subject, action, and setting. Use "Who, What, Where, When" where helpful (one or two complete sentences if needed).
 - Target: up to 200 characters per title (including spaces). Be specific and complete; avoid vague one-liners when more detail would clarify the topic.
+- Strong anchors (use when relevant to the image): region/country or named place if clearly inferable; environment (underwater, factory floor, etc.); shot feel (e.g. POV, wide shot, underwater shot) if it matches the frame; visible gear or role (hard hat, freediving, etc.).
+- For faceless or abstract commercial scenes, prefer phrasing like "unrecognizable …" when appropriate and name the theme (e.g. occupational health and safety concept, corporate wellness concept).
+- Avoid weak bare patterns like "Man doing X" or "X in Y" with no extra detail when the image supports richer wording.
 - Natural prose only; do NOT stack comma-separated keywords or tags. Readable sentences beat keyword lists.
 - Both EN and TR must convey the same meaning.
 
 Description (description_en / description_tr) — complementary detail ONLY (REQUIRED, never empty):
-- The title summarizes the scene; descriptions MUST add different information: e.g. lighting (direction, soft/hard, natural/artificial), mood/atmosphere, color palette or tonal contrast, sense of space or composition (wide vs intimate), implied use cases for buyers (advertising, web, editorial, social). Pick at least two of these dimensions that are not already spelled out in the title.
+- The title summarizes the scene; descriptions MUST add different information: e.g. lighting (direction, soft/hard, natural/artificial), mood/atmosphere, color palette or tonal contrast, sense of space or composition (wide vs intimate), implied use cases for buyers (advertising, web, editorial, social, OHS campaigns, travel brochures). Pick at least two of these dimensions that are not already spelled out in the title.
 - Length: 150-200 characters each (minimum ~120). description_tr must be Turkish; description_en English.
 - Do NOT paste or lightly rephrase the title. No duplicate sentences from the title."""
 
@@ -256,18 +259,20 @@ def api_keywords(b64, key, hint="", platform="general"):
 
 First, interpret the image as a story in your mind only (who, what, why, when, where, concept). Do NOT output this story or any explanation—use it only internally to choose keywords.
 
-Then generate keywords that reflect this story: who/what first (specific subject), then category, then place/time, then concepts (why, inspiration). Put the 10 most story-critical terms first.
+Two-tier list (critical for ranking and automation):
+- Keywords 1–10 (FIRST in the comma-separated list): Scene anchors — highest commercial value. Specific activity, place/region or sea if visible, main subject, equipment, setting, industry. Avoid vague filler in positions 1–10.
+- Keywords 11–50: Broader conceptual / thematic terms (mood, season, travel, compliance, freedom, discovery, risk, vacation, etc.) that buyers still search. Do not repeat the same wording as 1–10; add new angles.
 
 Keyword rules (follow strictly):
-- Hierarchical order: Put the 10 most important keywords FIRST. Adobe Stock and Getty rank early positions higher; order by importance.
-- Specific to general order: (1) Specific subject (e.g. Golden Retriever), (2) Category (e.g. Dog, Pet), (3) Concepts (e.g. Loyalty, Friendship).
+- Order strictly: positions 1–10 = anchors; 11–50 = conceptual expansion. Adobe Stock and Getty rank early positions higher.
+- Specific to general: (1) Specific subject/activity, (2) Place/setting/industry, (3) Objects/gear, (4) Then concepts/themes.
 - Use singular form only; do not add plural variants (e.g. "dog" not "dogs") to save the keyword limit.
-- Include conceptual tags that reflect the mood or message (e.g. Loneliness, Success, Sustainability); these are highly searched by agencies.
+- Include conceptual tags that reflect the mood or message in positions 11–50 (e.g. discovery, compliance, freedom).
 - Only tag what is clearly visible and central to the image; do not add small background objects or elements that are not the main subject.
 
 Also consider: buyer trends (2024-2025), commercial use (advertising, editorial, web, print), emotions, technical aspects, location/demographics if visible.
 
-Output format (critical): Your response must be exactly one line of comma-separated keywords. No introductory phrase (e.g. no "Here are the keywords:"), no sentences, no bullet points, no story text. Example: wind turbine, power line, renewable energy, sustainability, outdoor, sunset. Generate exactly 50 keywords."""
+Output format (critical): Your response must be exactly one line of comma-separated keywords. No introductory phrase (e.g. no "Here are the keywords:"), no sentences, no bullet points, no story text. Example: freediving, underwater, Halkidiki, Greece, marine life, Aegean sea, clear water, diving, adventure, action camera, discovery, extreme sport, nature, summer, freedom, vacation, travel, deep. Generate exactly 50 keywords."""
     raw = groq_vision(b64, prompt, key, 450)
     kws = [k.strip() for k in re.sub(r'[\"\'\*\-\n\d\.]','',raw).split(",") if k.strip()]
     return kws[:50]
