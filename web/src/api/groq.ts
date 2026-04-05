@@ -70,12 +70,12 @@ Output format (critical): Return ONLY valid JSON with ALL four keys as non-empty
 
 Title (title_en / title_tr) — what is visible (agency-style, buyer-facing):
 - State clearly what the image is about: main subject, action, and setting. Use "Who, What, Where, When" where helpful (one or two complete sentences if needed).
-- Target: up to 200 characters per title (including spaces). Be specific and complete; avoid vague one-liners when more detail would clarify the topic.
-- Strong anchors (use when relevant to the image): region/country or named place if clearly inferable; environment (underwater, factory floor, etc.); shot feel (e.g. POV, wide shot, underwater shot) if it matches the frame; visible gear or role (hard hat, freediving, etc.).
+- title_en (primary): Aim for roughly 120–200 characters (including spaces) whenever the image supports it—fill with subject + action + context; avoid a single short line when more specificity is visible. Hard max 200 characters.
+- Strong anchors in title_en (use when relevant): region/country or named place if clearly inferable; environment (underwater, factory floor, etc.); shot feel (e.g. POV, wide shot, underwater shot) if it matches the frame; visible gear or role (hard hat, freediving, etc.).
 - For faceless or abstract commercial scenes, prefer phrasing like "unrecognizable …" when appropriate and name the theme (e.g. occupational health and safety concept, corporate wellness concept).
 - Avoid weak bare patterns like "Man doing X" or "X in Y" with no extra detail when the image supports richer wording.
 - Natural prose only; do NOT stack comma-separated keywords or tags. Readable sentences beat keyword lists.
-- Both EN and TR must convey the same meaning.
+- title_tr: Natural Turkish conveying the same scene as title_en; length is flexible (reference/helper field)—do not pad or trim Turkish to match English character count.
 
 Description (description_en / description_tr) — complementary detail ONLY (REQUIRED, never empty):
 - The title summarizes the scene; descriptions MUST add different information focused on topic and content, not generic production talk. Prioritize: what is happening (actions, sequence), who or what is involved (roles, objects, equipment, symbols), relationships between elements, setting and context (place type, industry, activity), and the narrative or theme the image communicates. Pick at least two concrete content angles the title does not already state.
