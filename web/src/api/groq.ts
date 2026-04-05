@@ -70,17 +70,18 @@ Output format (critical): Return ONLY valid JSON with ALL four keys as non-empty
 
 Title (title_en / title_tr) — what is visible (agency-style, buyer-facing):
 - State clearly what the image is about: main subject, action, and setting. Use "Who, What, Where, When" where helpful (one or two complete sentences if needed).
-- title_en (primary): Aim for roughly 120–200 characters (including spaces) whenever the image supports it—fill with subject + action + context; avoid a single short line when more specificity is visible. Hard max 200 characters.
-- Strong anchors in title_en (use when relevant): region/country or named place if clearly inferable; environment (underwater, factory floor, etc.); shot feel (e.g. POV, wide shot, underwater shot) if it matches the frame; visible gear or role (hard hat, freediving, etc.).
+- Target: up to 200 characters per title (including spaces). Be specific and complete; avoid vague one-liners when more detail would clarify the topic.
+- Strong anchors (use when relevant to the image): region/country or named place if clearly inferable; environment (underwater, factory floor, etc.); shot feel (e.g. POV, wide shot, underwater shot) if it matches the frame; visible gear or role (hard hat, freediving, etc.).
 - For faceless or abstract commercial scenes, prefer phrasing like "unrecognizable …" when appropriate and name the theme (e.g. occupational health and safety concept, corporate wellness concept).
 - Avoid weak bare patterns like "Man doing X" or "X in Y" with no extra detail when the image supports richer wording.
 - Natural prose only; do NOT stack comma-separated keywords or tags. Readable sentences beat keyword lists.
-- title_tr: Natural Turkish conveying the same scene as title_en; length is flexible (reference/helper field)—do not pad or trim Turkish to match English character count.
+- Both EN and TR must convey the same meaning.
 
 Description (description_en / description_tr) — complementary detail ONLY (REQUIRED, never empty):
 - The title summarizes the scene; descriptions MUST add different information focused on topic and content, not generic production talk. Prioritize: what is happening (actions, sequence), who or what is involved (roles, objects, equipment, symbols), relationships between elements, setting and context (place type, industry, activity), and the narrative or theme the image communicates. Pick at least two concrete content angles the title does not already state.
 - Do NOT center the description on lighting, mood, atmosphere, color palette, or composition unless one short phrase supports the subject (e.g. clinical lighting for a medical scene). Avoid filler about "warm tones" or "wide shot" when the image calls for subject detail instead.
 - You may briefly mention typical buyer contexts (e.g. campaigns, editorial) only as a closing clause if space allows—not as the main substance.
+- Tone (critical): Write in direct, declarative stock-copy style—state what the image shows. Do NOT use hedging or vague uncertainty in English or Turkish (e.g. probably, possibly, maybe, likely, seems, appears, might, could, perhaps; Turkish: muhtemelen, belki, sanırım, gibi görünüyor, olabilir). If a specific label is not visible, use concrete but general wording (e.g. coastal road, industrial interior) instead of guessing with qualifiers.
 - Length: 150–200 characters each (minimum ~120). description_tr must be Turkish; description_en English.
 - Do NOT paste or lightly rephrase the title. No duplicate sentences from the title.`;
 
@@ -132,6 +133,7 @@ async function fillDescriptionsFromTitles(
 
 Rules:
 - Do NOT repeat or copy the title wording. Expand on topic and content: actions, objects, equipment, relationships, setting/context, and the theme or story—details the titles do not already state. Do not lead with lighting, mood, color, or composition unless one short phrase clarifies the subject.
+- Use direct, declarative wording—no hedging (no probably, maybe, seems, likely, possibly; Turkish: muhtemelen, belki, sanırım, gibi görünüyor, olabilir). Describe what is visible; if unsure of a label, use concrete general terms instead of qualifiers.
 - Each description 150-200 characters (minimum ~120). description_en in English, description_tr in Turkish.
 - Return ONLY valid JSON: {"description_en":"...","description_tr":"..."}
 
