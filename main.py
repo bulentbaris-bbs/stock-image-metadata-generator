@@ -171,7 +171,9 @@ Title (title_en / title_tr) — what is visible (agency-style, buyer-facing):
 - Both EN and TR must convey the same meaning.
 
 Description (description_en / description_tr) — complementary detail ONLY (REQUIRED, never empty):
-- The title summarizes the scene; descriptions MUST add different information: e.g. lighting (direction, soft/hard, natural/artificial), mood/atmosphere, color palette or tonal contrast, sense of space or composition (wide vs intimate), implied use cases for buyers (advertising, web, editorial, social, OHS campaigns, travel brochures). Pick at least two of these dimensions that are not already spelled out in the title.
+- The title summarizes the scene; descriptions MUST add different information focused on topic and content, not generic production talk. Prioritize: what is happening (actions, sequence), who or what is involved (roles, objects, equipment, symbols), relationships between elements, setting and context (place type, industry, activity), and the narrative or theme the image communicates. Pick at least two concrete content angles the title does not already state.
+- Do NOT center the description on lighting, mood, atmosphere, color palette, or composition unless one short phrase supports the subject (e.g. clinical lighting for a medical scene). Avoid filler about warm tones or wide shot when the image calls for subject detail instead.
+- You may briefly mention typical buyer contexts (e.g. campaigns, editorial) only as a closing clause if space allows—not as the main substance.
 - Length: 150-200 characters each (minimum ~120). description_tr must be Turkish; description_en English.
 - Do NOT paste or lightly rephrase the title. No duplicate sentences from the title."""
 
@@ -200,7 +202,7 @@ def _fill_descriptions_from_titles(key, title_en, title_tr, hint=""):
     prompt = f"""You are a microstock copywriter. Titles are fixed below. Write ONLY complementary image descriptions in English and Turkish.
 
 Rules:
-- Do NOT repeat or copy the title wording. Add lighting, mood, atmosphere, color/contrast, composition, or typical buyer use cases (ads, web, editorial) that the titles do not already state.
+- Do NOT repeat or copy the title wording. Expand on topic and content: actions, objects, equipment, relationships, setting/context, and the theme or story—details the titles do not already state. Do not lead with lighting, mood, color, or composition unless one short phrase clarifies the subject.
 - Each description 150-200 characters (minimum ~120). description_en in English, description_tr in Turkish.
 - Return ONLY valid JSON: {{"description_en":"...","description_tr":"..."}}
 
