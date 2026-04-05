@@ -96,7 +96,8 @@ ${safe}
 
 MANDATORY:
 - When the note aligns with what is clearly visible (subject, setting, mood, intended use, commercial angle, or style), you MUST reflect it in title_en, title_tr, description_en, and description_tr. Paraphrase naturally; integrate meaning—do not ignore the note.
-- If the note contradicts visible facts in the image, ignore the conflicting parts and describe only what the image shows.
+- HIGHEST PRIORITY when the user names specific behavior: actions, pose, gaze (e.g. toward the camera), facial expression (e.g. smiling), objects held or used (e.g. tablet), and who interacts with what. If these do not contradict the image, they MUST appear in title_en, title_tr, description_en, and description_tr. Do not replace them with generic stock clichés (e.g. "discussing work," "collaboration and productivity," "team meeting") when the note describes different behavior.
+- If the note contradicts visible facts in the image, ignore only the conflicting parts; keep the rest.
 - Do not paste the note verbatim as the entire title or description.
 
 ---
@@ -127,7 +128,8 @@ async function fillDescriptionsFromTitles(
   hint: string,
 ): Promise<{ description_en: string; description_tr: string } | null> {
   const ref = hint.trim()
-    ? `\nUser note (must shape tone/topics if compatible): ${JSON.stringify(hint.trim())}`
+    ? `\nUser note (high priority; paraphrase into descriptions, do not ignore): ${JSON.stringify(hint.trim())}
+- If the note specifies actions, pose, gaze, expression, or objects held, weave those into the descriptions when not already fully covered by the titles. Do not substitute unrelated generic office or "collaboration" tropes unless the note implies them.`
     : '';
   const p = `You are a microstock copywriter. Titles are fixed below. Write ONLY complementary image descriptions in English and Turkish.
 
