@@ -532,6 +532,10 @@ function AppProvider({ children }: { children: ReactNode }) {
   const [hint, setHint] = useState('');
   const lastUndoRef = useRef<{ fileId: string; record: MetadataRecord } | null>(null);
 
+  useEffect(() => {
+    setHint('');
+  }, [currentFileId]);
+
   const setFiles = useCallback((f: FileEntry[]) => setFilesState(f), []);
   const toggleSelection = useCallback((id: string) => {
     setSelectedIds((prev) => {
