@@ -17,27 +17,14 @@ import {
 import { apiMetadata } from './api/groq';
 import { apiEverypixels, everypixelToKeywordStrings } from './api/everypixels';
 import { enqueueThumbnail } from './lib/thumbnailQueue';
+import type { CsvColumn, MetadataRecord } from './types';
+import { CSV_HEADERS } from './types';
 
 // ─── Types & constants ─────────────────────────────────────────────────────
 interface FileEntry {
   id: string;
   file: File;
   name: string;
-}
-
-interface MetadataRecord {
-  file_name: string;
-  created_at: string;
-  title_en: string;
-  title_tr: string;
-  description_en: string;
-  description_tr: string;
-  adobe_keywords_en: string[];
-  adobe_keywords_tr: string[];
-  shutter_keywords_en: string[];
-  shutter_keywords_tr: string[];
-  istock_keywords_en: string[];
-  istock_keywords_tr: string[];
 }
 
 interface Settings {
@@ -47,12 +34,6 @@ interface Settings {
 }
 
 type IStockMap = Record<string, string>;
-
-const CSV_HEADERS = [
-  'file_path', 'file_name', 'created_at', 'title_en', 'title_tr',
-  'description_en', 'description_tr', 'adobe_keywords_en', 'adobe_keywords_tr',
-  'shutter_keywords_en', 'shutter_keywords_tr', 'istock_keywords_en', 'istock_keywords_tr',
-] as const;
 
 const ADOBE_MAX = 49;
 const SHUTTER_MAX = 50;
@@ -272,7 +253,7 @@ function buildCsvRow(record: MetadataRecord, filePath: string): string {
     shutter_keywords_en: joinKw(record.shutter_keywords_en), shutter_keywords_tr: joinKw(record.shutter_keywords_tr),
     istock_keywords_en: joinKw(record.istock_keywords_en), istock_keywords_tr: joinKw(record.istock_keywords_tr),
   };
-  return CSV_HEADERS.map((h) => escapeCsvField(row[h] ?? '')).join(',');
+  return CSV_HEADERS.map((h: CsvColumn) => escapeCsvField(row[h] ?? '')).join(',');
 }
 
 function buildCsv(records: { filePath: string; record: MetadataRecord }[]): string {

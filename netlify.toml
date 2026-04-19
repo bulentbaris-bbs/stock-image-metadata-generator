@@ -1,0 +1,5 @@
+# Monorepo: frontend lives in /web
+[build]
+  base = "web"
+  command = "npm run build"
+  publish = "dist"

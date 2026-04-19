@@ -1,4 +1,4 @@
-import type { MetadataRecord } from '../types';
+import type { CsvColumn, MetadataRecord } from '../types';
 import { CSV_HEADERS } from '../types';
 
 function escapeCsvField(val: string): string {
@@ -26,7 +26,7 @@ export function buildCsvRow(record: MetadataRecord, filePath: string): string {
     istock_keywords_en: joinKw(record.istock_keywords_en),
     istock_keywords_tr: joinKw(record.istock_keywords_tr),
   };
-  return CSV_HEADERS.map((h) => escapeCsvField(row[h] ?? '')).join(',');
+  return CSV_HEADERS.map((h: CsvColumn) => escapeCsvField(row[h] ?? '')).join(',');
 }
 
 export function buildCsv(records: { filePath: string; record: MetadataRecord }[]): string {
