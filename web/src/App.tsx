@@ -347,6 +347,7 @@ Keyword rules (follow strictly):
 - Use singular form only; do not add plural variants (e.g. "dog" not "dogs") to save the keyword limit.
 - Include conceptual tags that reflect the mood or message in positions 11–50 (e.g. discovery, compliance, freedom).
 - Only tag what is clearly visible and central to the image; do not add small background objects or elements that are not the main subject.
+- Human subjects (when people are a main subject): Include stock-relevant descriptors buyers search for—man, woman, boy, girl, teenager, young adult, adult, middle age, senior—when gender or broad age band is reasonably clear from the image (face, body, clothing, hair, pose, context). If sex is unclear, use person or people instead of guessing. Do not invent fine-grained demographics or ethnicity not supported by visible evidence. Prefer including at least one such term when a person clearly anchors the scene (often in positions 1–10 alongside activity/setting, or early in 11–50 without duplicating anchors).
 
 Also consider: buyer trends (2024-2025), commercial use (advertising, editorial, web, print), emotions, technical aspects, location/demographics if visible.
 
