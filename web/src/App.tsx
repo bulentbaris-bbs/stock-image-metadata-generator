@@ -11,6 +11,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type MutableRefObject,
   type ReactNode,
 } from 'react';
 
@@ -474,6 +475,9 @@ interface AppState {
   settings: Settings;
   istockMap: IStockMap;
   hint: string;
+  /** Bumps when a full metadata write resets iStock EN baseline (e.g. generate). */
+  istockBaselineEpoch: number;
+  istockEnBaselineByFileIdRef: MutableRefObject<Record<string, string[]>>;
 }
 
 interface AppActions {
@@ -512,6 +516,9 @@ function AppProvider({ children }: { children: ReactNode }) {
   const [istockMap, setIstockMapState] = useState<IStockMap>(loadIStockMap());
   const [hint, setHint] = useState('');
   const lastUndoRef = useRef<{ fileId: string; record: MetadataRecord } | null>(null);
+  /** Last full `istock_keywords_en` from `setMetadata` / undo per file — drives "Kütüphaneye Ekle" diff. */
+  const istockEnBaselineByFileIdRef = useRef<Record<string, string[]>>({});
+  const [istockBaselineEpoch, setIstockBaselineEpoch] = useState(0);
 
   useEffect(() => {
     setHint('');
@@ -550,6 +557,8 @@ function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setMetadata = useCallback((id: string, record: MetadataRecord, options?: { skipUndo?: boolean }) => {
+    istockEnBaselineByFileIdRef.current[id] = [...(record.istock_keywords_en ?? [])];
+    setIstockBaselineEpoch((e) => e + 1);
     setMetadataByFileId((prev) => {
       if (!options?.skipUndo && prev[id]) lastUndoRef.current = { fileId: id, record: prev[id] };
       const next = { ...prev, [id]: record };
@@ -572,6 +581,8 @@ function AppProvider({ children }: { children: ReactNode }) {
   const undo = useCallback(() => {
     const slot = lastUndoRef.current;
     if (!slot) return;
+    istockEnBaselineByFileIdRef.current[slot.fileId] = [...(slot.record.istock_keywords_en ?? [])];
+    setIstockBaselineEpoch((e) => e + 1);
     setMetadataByFileId((prev) => {
       if (prev[slot.fileId] === undefined) return prev;
       lastUndoRef.current = null;
@@ -670,13 +681,14 @@ function AppProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       files, currentFileId, selectedIds, metadataByFileId, settings, istockMap, hint,
+      istockBaselineEpoch, istockEnBaselineByFileIdRef,
       setFiles, addFiles, setCurrentFileId, toggleSelection, selectAll, deselectAll,
       setMetadata, updateMetadata, undo,
       setSettings: (s: Settings) => setSettingsState(s), saveSettings: saveSettingsAction,
       setIstockMap: (m: IStockMap) => setIstockMapState(m), saveIstockMap: saveIstockMapAction,
       setHint, downloadCsvExport, refreshTurkish, refreshTurkishTitleDescription, refreshTurkishAllKeywords,
     }),
-    [files, currentFileId, selectedIds, metadataByFileId, settings, istockMap, hint, saveSettingsAction, saveIstockMapAction, downloadCsvExport, refreshTurkish, refreshTurkishTitleDescription, refreshTurkishAllKeywords, undo]
+    [files, currentFileId, selectedIds, metadataByFileId, settings, istockMap, hint, istockBaselineEpoch, saveSettingsAction, saveIstockMapAction, downloadCsvExport, refreshTurkish, refreshTurkishTitleDescription, refreshTurkishAllKeywords, undo]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -1073,16 +1085,27 @@ function KeywordTabs({ onError }: { onError?: (msg: string) => void }) {
   const [activeTab, setActiveTab] = useState<TabId>('adobe');
   const [refreshingTr, setRefreshingTr] = useState(false);
   const [keywordFilter, setKeywordFilter] = useState('');
-  const { currentFileId, metadataByFileId, updateMetadata, istockMap, saveIstockMap, refreshTurkishTitleDescription, refreshTurkishAllKeywords } = useApp();
+  const {
+    currentFileId,
+    metadataByFileId,
+    updateMetadata,
+    istockMap,
+    saveIstockMap,
+    refreshTurkishTitleDescription,
+    refreshTurkishAllKeywords,
+    istockBaselineEpoch,
+    istockEnBaselineByFileIdRef,
+  } = useApp();
   const originalIstockEnRef = useRef<{ fileId: string; en: string[] }>({ fileId: '', en: [] });
   useEffect(() => {
     if (!currentFileId) return;
     const record = metadataByFileId[currentFileId];
     const en = (record?.istock_keywords_en ?? []) as string[];
-    if (originalIstockEnRef.current.fileId !== currentFileId) {
-      originalIstockEnRef.current = { fileId: currentFileId, en: [...en] };
-    }
-  }, [currentFileId, metadataByFileId]);
+    const baseline = istockEnBaselineByFileIdRef.current[currentFileId];
+    const source = baseline !== undefined ? baseline : en;
+    originalIstockEnRef.current = { fileId: currentFileId, en: [...source] };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- do not reset baseline on cell edits; only file switch or full metadata (setMetadata / undo).
+  }, [currentFileId, istockBaselineEpoch]);
   if (!currentFileId) return null;
   const record = metadataByFileId[currentFileId];
   if (!record) return null;
