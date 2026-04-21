@@ -75,6 +75,8 @@ Title (title_en / title_tr) — what is visible (agency-style, buyer-facing):
 - For faceless or abstract commercial scenes, prefer phrasing like "unrecognizable …" when appropriate and name the theme (e.g. occupational health and safety concept, corporate wellness concept).
 - Avoid weak bare patterns like "Man doing X" or "X in Y" with no extra detail when the image supports richer wording.
 - Natural prose only; do NOT stack comma-separated keywords or tags. Readable sentences beat keyword lists.
+- Tone (critical) for titles: Direct, declarative stock headlines—no hedging anywhere in title_en or title_tr (e.g. no probably, possibly, maybe, likely, seems, appears, might, could, perhaps; Turkish: muhtemelen, belki, sanırım, olabilir, büyük ihtimalle). Do not use inferential bridges such as "given the presence of," "suggesting that," or "which implies"—state what is visible (e.g. hard hat on desk, office, professional attire) as concrete facts, not as guesses.
+- Avoid vague closing clichés in titles (e.g. "sense of productivity," "spirit of collaboration")—prefer specific visible anchors instead.
 - Both EN and TR must convey the same meaning.
 
 Description (description_en / description_tr) — complementary detail ONLY (REQUIRED, never empty):
@@ -83,6 +85,8 @@ Description (description_en / description_tr) — complementary detail ONLY (REQ
 - You may briefly mention typical buyer contexts (e.g. campaigns, editorial) only as a closing clause if space allows—not as the main substance.
 - Tone (critical): Write in direct, declarative stock-copy style—state what the image shows. Do NOT use hedging or vague uncertainty in English or Turkish (e.g. probably, possibly, maybe, likely, seems, appears, might, could, perhaps; Turkish: muhtemelen, belki, sanırım, gibi görünüyor, olabilir, büyük ihtimalle). If a specific label is not visible, use concrete but general wording (e.g. coastal road, industrial interior) instead of guessing with qualifiers.
 - Never open descriptions with hedging or speculation (e.g. not "Probably…", "Likely…", "It appears…", "Muhtemelen…", "Belki…"); use present-tense, affirmative sentences that read as factual stock copy about what is in the frame.
+- Do not use hedging or inferential phrasing anywhere in the description body (not only the first words): avoid "likely," "given the presence of," "suggesting," "appears to be," "seems to," "may be working in." If props imply an industry, name the visible objects/setting directly.
+- Avoid weak abstract closers such as "convey a sense of industry and productivity" or "sense of collaboration"—replace with concrete visible detail or buyer use the image actually supports.
 - Length: 150–200 characters each (minimum ~120). description_tr must be Turkish; description_en English.
 - Do NOT paste or lightly rephrase the title. No duplicate sentences from the title.`;
 
@@ -136,7 +140,8 @@ async function fillDescriptionsFromTitles(
 
 Rules:
 - Do NOT repeat or copy the title wording. Expand on topic and content: actions, objects, equipment, relationships, setting/context, and the theme or story—details the titles do not already state. Do not lead with lighting, mood, color, or composition unless one short phrase clarifies the subject.
-- Use direct, declarative wording—no hedging (no probably, maybe, seems, likely, possibly; Turkish: muhtemelen, belki, sanırım, gibi görünüyor, olabilir, büyük ihtimalle). Do not start either description with hedging. Describe what is visible; if unsure of a label, use concrete general terms instead of qualifiers.
+- Use direct, declarative wording—no hedging (no probably, maybe, seems, likely, possibly; Turkish: muhtemelen, belki, sanırım, gibi görünüyor, olabilir, büyük ihtimalle). Do not start either description with hedging; do not use "given the presence of," "suggesting," or "likely" mid-sentence. Describe what is visible; if unsure of a label, use concrete general terms instead of qualifiers.
+- Avoid abstract closers like "sense of industry and productivity"—use concrete visible detail instead.
 - Each description 150-200 characters (minimum ~120). description_en in English, description_tr in Turkish.
 - Return ONLY valid JSON: {"description_en":"...","description_tr":"..."}
 
