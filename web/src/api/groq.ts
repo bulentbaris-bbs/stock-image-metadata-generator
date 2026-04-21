@@ -126,6 +126,88 @@ function extractFirstJsonObject(raw: string): string {
   return '';
 }
 
+/** English + Turkish hedging / uncertainty — if any match, trigger a rewrite pass. */
+const HEDGE_EN_RE =
+  /\b(likely|probably|possibly|maybe|perhaps)\b|\bappear(s)?\s+to(\s+be)?\b|\bseem(s)?\s+to(\s+be)?\b|\bit\s+appears\b|\b(might|could)\s+be\b|\bgiven\s+the\s+presence\b|\bsuggest(s|ing)?\s+that\b/i;
+const HEDGE_TR_RE =
+  /muhtemelen|belki|sanırım|olabilir|büyük\s+ihtimalle|gibi\s+görünüyor|muhtemel\s+olarak|görünüşe\s+göre/i;
+
+function textNeedsHedgeFix(s: string): boolean {
+  const t = (s ?? '').trim();
+  if (!t) return false;
+  return HEDGE_EN_RE.test(t) || HEDGE_TR_RE.test(t);
+}
+
+async function runHedgeRefinePass(
+  key: string,
+  title_en: string,
+  title_tr: string,
+  description_en: string,
+  description_tr: string,
+): Promise<{ title_en: string; title_tr: string; description_en: string; description_tr: string } | null> {
+  const p = `You are an editor for microstock metadata. Rewrite ALL four fields below to remove EVERY trace of hedging or uncertainty while keeping the same factual scene.
+
+Banned in English fields (title_en, description_en): likely, probably, possibly, maybe, perhaps, appear/appears to (be), seem/seems to (be), it appears, might be, could be, given the presence, suggesting that.
+Banned in Turkish fields (title_tr, description_tr): muhtemelen, belki, sanırım, olabilir, büyük ihtimalle, gibi görünüyor, görünüşe göre, muhtemel olarak.
+
+Use direct present-tense statements only. Do not add new subjects or guesses. title_en/title_tr max ~200 characters; description_en/description_tr ~150–200 characters each (minimum ~120). Keep title_tr and description_tr in Turkish.
+
+Return ONLY valid JSON:
+{"title_en":"","title_tr":"","description_en":"","description_tr":""}
+
+title_en: ${JSON.stringify(title_en)}
+title_tr: ${JSON.stringify(title_tr)}
+description_en: ${JSON.stringify(description_en)}
+description_tr: ${JSON.stringify(description_tr)}`;
+  try {
+    const raw = await groqText(p, key, 900);
+    const jsonStr = extractFirstJsonObject(raw);
+    if (!jsonStr) return null;
+    const o = JSON.parse(jsonStr) as Record<string, string>;
+    const clip = (s: unknown, max: number) =>
+      typeof s === 'string' ? (s.length > max ? s.slice(0, max) : s) : '';
+    const te = clip(o.title_en, 200);
+    const tt = clip(o.title_tr, 200);
+    const de = clip(o.description_en, 2000);
+    const dt = clip(o.description_tr, 2000);
+    if (!te.trim() || !tt.trim() || !de.trim() || !dt.trim()) return null;
+    return { title_en: te, title_tr: tt, description_en: de, description_tr: dt };
+  } catch {
+    return null;
+  }
+}
+
+/** Up to two Groq text passes if hedging patterns remain (vision model often ignores long bans). */
+async function refineMetadataAgainstHedging(
+  key: string,
+  title_en: string,
+  title_tr: string,
+  description_en: string,
+  description_tr: string,
+): Promise<{ title_en: string; title_tr: string; description_en: string; description_tr: string }> {
+  let tEn = title_en;
+  let tTr = title_tr;
+  let dEn = description_en;
+  let dTr = description_tr;
+  for (let i = 0; i < 2; i++) {
+    if (
+      !textNeedsHedgeFix(tEn) &&
+      !textNeedsHedgeFix(tTr) &&
+      !textNeedsHedgeFix(dEn) &&
+      !textNeedsHedgeFix(dTr)
+    ) {
+      break;
+    }
+    const next = await runHedgeRefinePass(key, tEn, tTr, dEn, dTr);
+    if (!next) break;
+    tEn = next.title_en;
+    tTr = next.title_tr;
+    dEn = next.description_en;
+    dTr = next.description_tr;
+  }
+  return { title_en: tEn, title_tr: tTr, description_en: dEn, description_tr: dTr };
+}
+
 async function fillDescriptionsFromTitles(
   key: string,
   titleEn: string,
@@ -187,7 +269,13 @@ export async function apiMetadata(
         description_tr = filled.description_tr;
       }
     }
-    return { title_en, title_tr, description_en, description_tr };
+    const refined = await refineMetadataAgainstHedging(key, title_en, title_tr, description_en, description_tr);
+    return {
+      title_en: refined.title_en,
+      title_tr: refined.title_tr,
+      description_en: refined.description_en,
+      description_tr: refined.description_tr,
+    };
   } catch (e) {
     throw new Error('Invalid response: JSON parse failed');
   }

@@ -233,6 +233,70 @@ title_tr: {title_tr}{ref}"""
     except Exception:
         return None
 
+_HEDGE_EN_RE = re.compile(
+    r"\b(likely|probably|possibly|maybe|perhaps)\b|"
+    r"\bappear(s)?\s+to(\s+be)?\b|"
+    r"\bseem(s)?\s+to(\s+be)?\b|"
+    r"\bit\s+appears\b|"
+    r"\b(might|could)\s+be\b|"
+    r"\bgiven\s+the\s+presence\b|"
+    r"\bsuggest(s|ing)?\s+that\b",
+    re.I,
+)
+_HEDGE_TR_RE = re.compile(
+    r"muhtemelen|belki|sanırım|olabilir|büyük\s+ihtimalle|gibi\s+görünüyor|muhtemel\s+olarak|görünüşe\s+göre",
+    re.I,
+)
+
+def _text_needs_hedge_fix(s):
+    if not s or not isinstance(s, str):
+        return False
+    return bool(_HEDGE_EN_RE.search(s) or _HEDGE_TR_RE.search(s))
+
+def _run_hedge_refine_pass(key, title_en, title_tr, description_en, description_tr):
+    p = f"""You are an editor for microstock metadata. Rewrite ALL four fields below to remove EVERY trace of hedging or uncertainty while keeping the same factual scene.
+
+Banned in English fields (title_en, description_en): likely, probably, possibly, maybe, perhaps, appear/appears to (be), seem/seems to (be), it appears, might be, could be, given the presence, suggesting that.
+Banned in Turkish fields (title_tr, description_tr): muhtemelen, belki, sanırım, olabilir, büyük ihtimalle, gibi görünüyor, görünüşe göre, muhtemel olarak.
+
+Use direct present-tense statements only. Do not add new subjects or guesses. title_en/title_tr max ~200 characters; description_en/description_tr ~150-200 characters each (minimum ~120). Keep title_tr and description_tr in Turkish.
+
+Return ONLY valid JSON:
+{{"title_en":"","title_tr":"","description_en":"","description_tr":""}}
+
+title_en: {json.dumps(title_en, ensure_ascii=False)}
+title_tr: {json.dumps(title_tr, ensure_ascii=False)}
+description_en: {json.dumps(description_en, ensure_ascii=False)}
+description_tr: {json.dumps(description_tr, ensure_ascii=False)}"""
+    try:
+        raw = groq_text(p, key, 900)
+        m = re.search(r"\{.*\}", raw, re.DOTALL)
+        if not m:
+            return None
+        d = json.loads(m.group())
+        def _clip(s, n):
+            return (s or "")[:n] if isinstance(s, str) else ""
+        te = _clip(d.get("title_en"), 200)
+        tt = _clip(d.get("title_tr"), 200)
+        de = _clip(d.get("description_en"), 2000)
+        dt = _clip(d.get("description_tr"), 2000)
+        if not te.strip() or not tt.strip() or not de.strip() or not dt.strip():
+            return None
+        return {"title_en": te, "title_tr": tt, "description_en": de, "description_tr": dt}
+    except Exception:
+        return None
+
+def _refine_metadata_hedging(key, title_en, title_tr, description_en, description_tr):
+    t_en, t_tr, d_en, d_tr = title_en, title_tr, description_en, description_tr
+    for _ in range(2):
+        if not any(_text_needs_hedge_fix(x) for x in (t_en, t_tr, d_en, d_tr)):
+            break
+        nxt = _run_hedge_refine_pass(key, t_en, t_tr, d_en, d_tr)
+        if not nxt:
+            break
+        t_en, t_tr, d_en, d_tr = nxt["title_en"], nxt["title_tr"], nxt["description_en"], nxt["description_tr"]
+    return {"title_en": t_en, "title_tr": t_tr, "description_en": d_en, "description_tr": d_tr}
+
 def api_metadata(b64, key, hint=""):
     prompt = build_metadata_vision_prompt(hint)
     raw = groq_vision(b64, prompt, key, 1024)
@@ -251,11 +315,12 @@ def api_metadata(b64, key, hint=""):
         if filled:
             description_en = filled["description_en"]
             description_tr = filled["description_tr"]
+    refined = _refine_metadata_hedging(key, title_en, title_tr, description_en, description_tr)
     return {
-        "title_en": title_en,
-        "title_tr": title_tr,
-        "description_en": description_en,
-        "description_tr": description_tr,
+        "title_en": refined["title_en"],
+        "title_tr": refined["title_tr"],
+        "description_en": refined["description_en"],
+        "description_tr": refined["description_tr"],
     }
 
 def api_keywords(b64, key, hint="", platform="general"):
