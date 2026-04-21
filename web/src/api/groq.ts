@@ -81,7 +81,8 @@ Description (description_en / description_tr) — complementary detail ONLY (REQ
 - The title summarizes the scene; descriptions MUST add different information focused on topic and content, not generic production talk. Prioritize: what is happening (actions, sequence), who or what is involved (roles, objects, equipment, symbols), relationships between elements, setting and context (place type, industry, activity), and the narrative or theme the image communicates. Pick at least two concrete content angles the title does not already state.
 - Do NOT center the description on lighting, mood, atmosphere, color palette, or composition unless one short phrase supports the subject (e.g. clinical lighting for a medical scene). Avoid filler about "warm tones" or "wide shot" when the image calls for subject detail instead.
 - You may briefly mention typical buyer contexts (e.g. campaigns, editorial) only as a closing clause if space allows—not as the main substance.
-- Tone (critical): Write in direct, declarative stock-copy style—state what the image shows. Do NOT use hedging or vague uncertainty in English or Turkish (e.g. probably, possibly, maybe, likely, seems, appears, might, could, perhaps; Turkish: muhtemelen, belki, sanırım, gibi görünüyor, olabilir). If a specific label is not visible, use concrete but general wording (e.g. coastal road, industrial interior) instead of guessing with qualifiers.
+- Tone (critical): Write in direct, declarative stock-copy style—state what the image shows. Do NOT use hedging or vague uncertainty in English or Turkish (e.g. probably, possibly, maybe, likely, seems, appears, might, could, perhaps; Turkish: muhtemelen, belki, sanırım, gibi görünüyor, olabilir, büyük ihtimalle). If a specific label is not visible, use concrete but general wording (e.g. coastal road, industrial interior) instead of guessing with qualifiers.
+- Never open descriptions with hedging or speculation (e.g. not "Probably…", "Likely…", "It appears…", "Muhtemelen…", "Belki…"); use present-tense, affirmative sentences that read as factual stock copy about what is in the frame.
 - Length: 150–200 characters each (minimum ~120). description_tr must be Turkish; description_en English.
 - Do NOT paste or lightly rephrase the title. No duplicate sentences from the title.`;
 
@@ -135,7 +136,7 @@ async function fillDescriptionsFromTitles(
 
 Rules:
 - Do NOT repeat or copy the title wording. Expand on topic and content: actions, objects, equipment, relationships, setting/context, and the theme or story—details the titles do not already state. Do not lead with lighting, mood, color, or composition unless one short phrase clarifies the subject.
-- Use direct, declarative wording—no hedging (no probably, maybe, seems, likely, possibly; Turkish: muhtemelen, belki, sanırım, gibi görünüyor, olabilir). Describe what is visible; if unsure of a label, use concrete general terms instead of qualifiers.
+- Use direct, declarative wording—no hedging (no probably, maybe, seems, likely, possibly; Turkish: muhtemelen, belki, sanırım, gibi görünüyor, olabilir, büyük ihtimalle). Do not start either description with hedging. Describe what is visible; if unsure of a label, use concrete general terms instead of qualifiers.
 - Each description 150-200 characters (minimum ~120). description_en in English, description_tr in Turkish.
 - Return ONLY valid JSON: {"description_en":"...","description_tr":"..."}
 
@@ -233,8 +234,12 @@ export async function apiKeywords(
 
 export async function apiTranslate(text: string, toLang: 'tr' | 'en', key: string): Promise<string> {
   const lang = toLang === 'tr' ? 'Türkçe' : 'English';
+  const trExtra =
+    toLang === 'tr'
+      ? ' Use direct Turkish; do not add hedging or uncertainty (no muhtemelen, belki, sanırım, olabilir, gibi görünüyor, büyük ihtimalle). For comma-separated keyword lists, translate each term plainly without adding qualifiers.'
+      : '';
   return groqText(
-    `Translate to ${lang}. Keep it natural and professional. Return ONLY the translation:\n\n${text}`,
+    `Translate to ${lang}. Keep it natural and professional.${trExtra} Return ONLY the translation:\n\n${text}`,
     key,
     350
   );

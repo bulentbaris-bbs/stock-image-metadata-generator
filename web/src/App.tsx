@@ -457,7 +457,10 @@ function applyTrMap(enList: string[], trMap: Map<string, string>): string[] {
   });
 }
 
-const TR_TRANSLATE_PROMPT = 'Translate the following to Turkish. Return only the Turkish text, no explanation or quotes.\n\n';
+const TR_TRANSLATE_PROMPT =
+  'Translate the following to natural Turkish for stock/advertising copy. Return only the Turkish text, no explanation or quotes. ' +
+  'Use direct, confident wording; do not add hedging (no muhtemelen, belki, sanırım, olabilir, gibi görünüyor, büyük ihtimalle). ' +
+  'Prefer affirmative present-tense that mirrors the source without softening.\n\n';
 
 async function apiTranslateToTurkish(text: string, key: string): Promise<string> {
   const t = (text ?? '').trim();
