@@ -70,7 +70,7 @@ Output format (critical): Return ONLY valid JSON with ALL four keys as non-empty
 
 Title (title_en / title_tr) — what is visible (agency-style, buyer-facing):
 - State clearly what the image is about: main subject, action, and setting. Use "Who, What, Where, When" where helpful (one or two complete sentences if needed).
-- Target: up to 200 characters per title (including spaces). Be specific and complete; avoid vague one-liners when more detail would clarify the topic.
+- Target length (both title_en and title_tr): **Aim for ~150 characters** (including spaces) as the ideal; keep roughly **130–180**; **hard maximum 200**. When the scene supports it, do **not** stop under **~120** with a thin one-liner—add subject, action, setting, and concrete anchors (gear, place type, shot feel) until you approach the target.
 - Strong anchors (use when relevant to the image): region/country or named place if clearly inferable; environment (underwater, factory floor, etc.); shot feel (e.g. POV, wide shot, underwater shot) if it matches the frame; visible gear or role (hard hat, freediving, etc.).
 - For faceless or abstract commercial scenes, prefer phrasing like "unrecognizable …" when appropriate and name the theme (e.g. occupational health and safety concept, corporate wellness concept).
 - Avoid weak bare patterns like "Man doing X" or "X in Y" with no extra detail when the image supports richer wording.
@@ -150,7 +150,7 @@ async function runHedgeRefinePass(
 Banned in English fields (title_en, description_en): likely, probably, possibly, maybe, perhaps, appear/appears to (be), seem/seems to (be), it appears, might be, could be, given the presence, suggesting that.
 Banned in Turkish fields (title_tr, description_tr): muhtemelen, belki, sanırım, olabilir, büyük ihtimalle, gibi görünüyor, görünüşe göre, muhtemel olarak.
 
-Use direct present-tense statements only. Do not add new subjects or guesses. title_en/title_tr max ~200 characters; description_en/description_tr ~150–200 characters each (minimum ~120). Keep title_tr and description_tr in Turkish.
+Use direct present-tense statements only. Do not add new subjects or guesses. Titles: **do not shorten** to strip hedging—replace with concrete wording and keep length in the **~130–180** band (max **200**); if a title was long, the revised title should stay similarly substantial unless it was overlong. Descriptions: ~150–200 each (min ~120). Keep title_tr and description_tr in Turkish.
 
 Return ONLY valid JSON:
 {"title_en":"","title_tr":"","description_en":"","description_tr":""}
