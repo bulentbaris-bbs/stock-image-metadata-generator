@@ -7,6 +7,17 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Serialize vision calls so we never hit Groq TPM with parallel image requests. */
+let visionQueue: Promise<unknown> = Promise.resolve();
+function enqueueVision<T>(task: () => Promise<T>): Promise<T> {
+  const run = visionQueue.then(() => task());
+  visionQueue = run.then(
+    () => undefined,
+    () => undefined
+  );
+  return run;
+}
+
 async function groqChat(
   body: Record<string, unknown>,
   key: string,
@@ -50,9 +61,12 @@ async function groqChat(
     const retryable = res.status === 429 || res.status === 503;
     if (retryable && attempt < 5) {
       const retryAfter = Number(res.headers.get('retry-after'));
-      const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : delayMs;
+      let waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : delayMs;
+      if (res.status === 429 && /tokens per minute|TPM|rate limit/i.test(text)) {
+        waitMs = Math.max(waitMs, 20000);
+      }
       await sleep(waitMs);
-      delayMs = Math.min(delayMs * 2, 30000);
+      delayMs = Math.min(delayMs * 2, 60000);
       continue;
     }
     throw new Error(`${label}: ${res.status} ${text.slice(0, 200)}`);
@@ -66,23 +80,25 @@ export async function groqVision(
   key: string,
   maxTokens = 700
 ): Promise<string> {
-  return groqChat(
-    {
-      model: GROQ_VISION_MODEL,
-      temperature: 0.4,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${b64}` } },
-            { type: 'text', text: prompt },
-          ],
-        },
-      ],
-      max_tokens: maxTokens,
-    },
-    key,
-    'Groq vision'
+  return enqueueVision(() =>
+    groqChat(
+      {
+        model: GROQ_VISION_MODEL,
+        temperature: 0.4,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${b64}` } },
+              { type: 'text', text: prompt },
+            ],
+          },
+        ],
+        max_tokens: maxTokens,
+      },
+      key,
+      'Groq vision'
+    )
   );
 }
 
@@ -321,14 +337,94 @@ title_tr: ${titleTr}${ref}`;
   }
 }
 
-async function repairMetadataJsonWithText(key: string, raw: string): Promise<string> {
+async function repairMetadataJsonWithText(key: string, raw: string, withKeywords = false): Promise<string> {
   const snippet = normalizeModelJsonRaw(raw).slice(0, 6000);
-  const p = `Convert the following stock-photo metadata draft into valid JSON with exactly these keys: title_en, title_tr, description_en, description_tr. All values must be non-empty strings. Preserve meaning; fix formatting only.
+  const keys = withKeywords
+    ? 'title_en, title_tr, description_en, description_tr, keywords_en'
+    : 'title_en, title_tr, description_en, description_tr';
+  const kwRule = withKeywords
+    ? ' keywords_en must be one comma-separated string of 50 English microstock keywords.'
+    : '';
+  const p = `Convert the following stock-photo metadata draft into valid JSON with exactly these keys: ${keys}. All string values must be non-empty.${kwRule} Preserve meaning; fix formatting only.
 
 Draft:
 ${snippet}`;
-  const repaired = await groqText(p, key, 1200, { jsonMode: true });
+  const repaired = await groqText(p, key, 1400, { jsonMode: true });
   return extractFirstJsonObject(repaired);
+}
+
+function parseKeywordsField(v: unknown): string[] {
+  if (typeof v === 'string') return parseKeywordCsv(v);
+  if (Array.isArray(v)) {
+    return v
+      .map((x) => String(x).trim())
+      .filter(Boolean)
+      .slice(0, 50);
+  }
+  return [];
+}
+
+const COMBINED_KEYWORDS_APPEND = `
+
+Also include keywords_en: ONE comma-separated string of exactly 50 English microstock keywords (unified for Adobe Stock, Shutterstock, iStock). Positions 1–10 = scene anchors; 11–50 = broader concepts. Singular form only.
+
+Your entire reply must be ONE JSON object with keys: title_en, title_tr, description_en, description_tr, keywords_en. No markdown, no thinking tags, no other text.`;
+
+export function buildCombinedVisionPrompt(hint: string): string {
+  return buildMetadataVisionPrompt(hint) + COMBINED_KEYWORDS_APPEND;
+}
+
+async function finalizeMetadataRecord(
+  key: string,
+  hint: string,
+  o: Record<string, unknown>
+): Promise<{ title_en: string; title_tr: string; description_en: string; description_tr: string }> {
+  const clip = (s: unknown, max: number) =>
+    typeof s === 'string' ? (s.length > max ? s.slice(0, max) : s) : '';
+  let title_en = clip(o.title_en, 200);
+  let title_tr = clip(o.title_tr, 200);
+  let description_en = clip(o.description_en, 2000);
+  let description_tr = clip(o.description_tr, 2000);
+  if (!description_en.trim() || !description_tr.trim()) {
+    const filled = await fillDescriptionsFromTitles(key, title_en, title_tr, hint);
+    if (filled) {
+      description_en = filled.description_en;
+      description_tr = filled.description_tr;
+    }
+  }
+  const refined = await refineMetadataAgainstHedging(key, title_en, title_tr, description_en, description_tr);
+  return refined;
+}
+
+export async function apiMetadataWithKeywords(
+  b64: string,
+  key: string,
+  hint = ''
+): Promise<{
+  title_en: string;
+  title_tr: string;
+  description_en: string;
+  description_tr: string;
+  keywords: string[];
+}> {
+  const prompt = buildCombinedVisionPrompt(hint);
+  let raw = await groqVision(b64, prompt, key, 2048);
+  let jsonStr = extractFirstJsonObject(raw);
+  if (!jsonStr && raw.trim()) {
+    jsonStr = await repairMetadataJsonWithText(key, raw, true);
+  }
+  if (!jsonStr) {
+    const preview = normalizeModelJsonRaw(raw).slice(0, 120);
+    throw new Error(`Invalid response: no JSON${preview ? ` (${preview}…)` : ''}`);
+  }
+  try {
+    const o = JSON.parse(jsonStr) as Record<string, unknown>;
+    const meta = await finalizeMetadataRecord(key, hint, o);
+    const keywords = parseKeywordsField(o.keywords_en);
+    return { ...meta, keywords };
+  } catch {
+    throw new Error('Invalid response: JSON parse failed');
+  }
 }
 
 export async function apiMetadata(
@@ -339,42 +435,19 @@ export async function apiMetadata(
   const prompt = buildMetadataVisionPrompt(hint);
   const jsonRetrySuffix =
     '\n\nCRITICAL: Your entire reply must be ONE JSON object only, starting with { and ending with }. Keys: title_en, title_tr, description_en, description_tr. No markdown, no thinking tags, no other text.';
-  let raw = await groqVision(b64, prompt, key, 2048);
+  let raw = await groqVision(b64, prompt + jsonRetrySuffix, key, 2048);
   let jsonStr = extractFirstJsonObject(raw);
-  if (!jsonStr) {
-    raw = await groqVision(b64, prompt + jsonRetrySuffix, key, 2048);
-    jsonStr = extractFirstJsonObject(raw);
-  }
   if (!jsonStr && raw.trim()) {
-    jsonStr = await repairMetadataJsonWithText(key, raw);
+    jsonStr = await repairMetadataJsonWithText(key, raw, false);
   }
   if (!jsonStr) {
     const preview = normalizeModelJsonRaw(raw).slice(0, 120);
     throw new Error(`Invalid response: no JSON${preview ? ` (${preview}…)` : ''}`);
   }
   try {
-    const o = JSON.parse(jsonStr) as Record<string, string>;
-    const clip = (s: unknown, max: number) =>
-      typeof s === 'string' ? (s.length > max ? s.slice(0, max) : s) : '';
-    let title_en = clip(o.title_en, 200);
-    let title_tr = clip(o.title_tr, 200);
-    let description_en = clip(o.description_en, 2000);
-    let description_tr = clip(o.description_tr, 2000);
-    if (!description_en.trim() || !description_tr.trim()) {
-      const filled = await fillDescriptionsFromTitles(key, title_en, title_tr, hint);
-      if (filled) {
-        description_en = filled.description_en;
-        description_tr = filled.description_tr;
-      }
-    }
-    const refined = await refineMetadataAgainstHedging(key, title_en, title_tr, description_en, description_tr);
-    return {
-      title_en: refined.title_en,
-      title_tr: refined.title_tr,
-      description_en: refined.description_en,
-      description_tr: refined.description_tr,
-    };
-  } catch (e) {
+    const o = JSON.parse(jsonStr) as Record<string, unknown>;
+    return finalizeMetadataRecord(key, hint, o);
+  } catch {
     throw new Error('Invalid response: JSON parse failed');
   }
 }

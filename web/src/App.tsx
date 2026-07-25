@@ -15,7 +15,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { apiMetadata, apiKeywordsAllPlatforms } from './api/groq';
+import { apiMetadata, apiMetadataWithKeywords, apiKeywordsAllPlatforms } from './api/groq';
 import { apiEverypixels, everypixelToKeywordStrings } from './api/everypixels';
 import { enqueueThumbnail } from './lib/thumbnailQueue';
 import type { CsvColumn, MetadataRecord } from './types';
@@ -1317,42 +1317,45 @@ function AppContent() {
         const epId = settings.everypixels_id?.trim();
         const epSecret = settings.everypixels_secret?.trim();
 
-        const getEnKeywords = async (): Promise<{ adobeEn: string[]; shutterEn: string[]; istockEn: string[] }> => {
-          const groqKwFromVision = async (): Promise<string[]> => apiKeywordsAllPlatforms(b64, key, hintText);
-          const fromGroqList = (groqKw: string[]) => ({
-            adobeEn: groqKw.slice(0, ADOBE_MAX),
-            shutterEn: groqKw.slice(0, SHUTTER_MAX),
-            istockEn: mapIstock(groqKw.slice(0, ISTOCK_MAX)),
-          });
+        const fromGroqList = (groqKw: string[]) => ({
+          adobeEn: groqKw.slice(0, ADOBE_MAX),
+          shutterEn: groqKw.slice(0, SHUTTER_MAX),
+          istockEn: mapIstock(groqKw.slice(0, ISTOCK_MAX)),
+        });
 
-          if (epId && epSecret) {
+        let meta: { title_en: string; title_tr: string; description_en: string; description_tr: string };
+        let adobeEn: string[];
+        let shutterEn: string[];
+        let istockEn: string[];
+
+        if (epId && epSecret) {
+          meta = await apiMetadata(b64, key, hintText);
+          const getEnKeywords = async (): Promise<{ adobeEn: string[]; shutterEn: string[]; istockEn: string[] }> => {
             try {
               const fileForEp = isVideo(entry.file) ? base64JpegToFile(b64, 'frame.jpg') : entry.file;
               const epResult = await apiEverypixels(fileForEp, epId, epSecret);
               const allKw = everypixelToKeywordStrings(epResult);
-              let adobeEn = allKw.slice(0, ADOBE_MAX);
-              let shutterEn = allKw.slice(0, SHUTTER_MAX);
-              let istockEn = mapIstock(allKw.slice(0, ISTOCK_MAX));
-              const needsGroq =
-                adobeEn.length < ADOBE_MAX ||
-                shutterEn.length < SHUTTER_MAX ||
-                istockEn.length < ISTOCK_MAX;
+              let aEn = allKw.slice(0, ADOBE_MAX);
+              let sEn = allKw.slice(0, SHUTTER_MAX);
+              let iEn = mapIstock(allKw.slice(0, ISTOCK_MAX));
+              const needsGroq = aEn.length < ADOBE_MAX || sEn.length < SHUTTER_MAX || iEn.length < ISTOCK_MAX;
               if (needsGroq) {
-                const groqKw = await groqKwFromVision();
-                adobeEn = fillKeywordsToMax(adobeEn, ADOBE_MAX, groqKw);
-                shutterEn = fillKeywordsToMax(shutterEn, SHUTTER_MAX, groqKw);
-                istockEn = fillKeywordsToMax(istockEn, ISTOCK_MAX, mapIstock(groqKw));
+                const groqKw = await apiKeywordsAllPlatforms(b64, key, hintText);
+                aEn = fillKeywordsToMax(aEn, ADOBE_MAX, groqKw);
+                sEn = fillKeywordsToMax(sEn, SHUTTER_MAX, groqKw);
+                iEn = fillKeywordsToMax(iEn, ISTOCK_MAX, mapIstock(groqKw));
               }
-              return { adobeEn, shutterEn, istockEn };
+              return { adobeEn: aEn, shutterEn: sEn, istockEn: iEn };
             } catch {
-              return fromGroqList(await groqKwFromVision());
+              return fromGroqList(await apiKeywordsAllPlatforms(b64, key, hintText));
             }
-          }
-          return fromGroqList(await groqKwFromVision());
-        };
-
-        const [meta, enResult] = await Promise.all([apiMetadata(b64, key, hintText), getEnKeywords()]);
-        const { adobeEn, shutterEn, istockEn } = enResult;
+          };
+          ({ adobeEn, shutterEn, istockEn } = await getEnKeywords());
+        } else {
+          const combined = await apiMetadataWithKeywords(b64, key, hintText);
+          meta = combined;
+          ({ adobeEn, shutterEn, istockEn } = fromGroqList(combined.keywords));
+        }
         const uniqueEn = buildUniqueEnList(adobeEn, shutterEn, istockEn);
         const trMap = await apiTranslateUniqueKwToMap(uniqueEn, key);
         const adobeTr = applyTrMap(adobeEn, trMap);
