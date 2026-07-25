@@ -38,7 +38,12 @@ async function groqChat(
 
     if (res.ok) {
       const data = await res.json();
-      return (data?.choices?.[0]?.message?.content ?? '').trim();
+      const msg = data?.choices?.[0]?.message;
+      const content = (msg?.content ?? '').trim();
+      if (content) return content;
+      const reasoning = (msg?.reasoning ?? msg?.reasoning_content ?? '').trim();
+      if (reasoning) return reasoning;
+      return '';
     }
 
     const text = await res.text();
@@ -59,25 +64,27 @@ export async function groqVision(
   b64: string,
   prompt: string,
   key: string,
-  maxTokens = 700
+  maxTokens = 700,
+  options?: { jsonMode?: boolean }
 ): Promise<string> {
-  return groqChat(
-    {
-      model: GROQ_VISION_MODEL,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${b64}` } },
-            { type: 'text', text: prompt },
-          ],
-        },
-      ],
-      max_tokens: maxTokens,
-    },
-    key,
-    'Groq vision'
-  );
+  const body: Record<string, unknown> = {
+    model: GROQ_VISION_MODEL,
+    temperature: options?.jsonMode ? 0.2 : 1,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${b64}` } },
+          { type: 'text', text: prompt },
+        ],
+      },
+    ],
+    max_tokens: maxTokens,
+  };
+  if (options?.jsonMode) {
+    body.response_format = { type: 'json_object' };
+  }
+  return groqChat(body, key, 'Groq vision');
 }
 
 export async function groqText(
@@ -147,17 +154,48 @@ MANDATORY:
 ${METADATA_INSTRUCTIONS}`;
 }
 
+/** Strip Qwen thinking blocks, markdown fences, and other wrapper text before JSON parse. */
+function normalizeModelJsonRaw(raw: string): string {
+  let s = (raw ?? '').trim();
+  if (!s) return '';
+  const thinkClose = '<' + '/think>';
+  const thinkOpen = '<' + 'think>';
+  const closeIdx = s.lastIndexOf(thinkClose);
+  if (closeIdx !== -1) s = s.slice(closeIdx + thinkClose.length).trim();
+  if (s.startsWith(thinkOpen)) {
+    const endOpen = s.indexOf(thinkClose);
+    if (endOpen !== -1) s = s.slice(endOpen + thinkClose.length).trim();
+    else s = s.slice(thinkOpen.length).trim();
+  }
+  const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence?.[1]) s = fence[1].trim();
+  return s;
+}
+
 /** Extract the first complete JSON object from a string (handles trailing text or multiple objects). */
 function extractFirstJsonObject(raw: string): string {
-  const start = raw.indexOf('{');
+  const normalized = normalizeModelJsonRaw(raw);
+  const start = normalized.indexOf('{');
   if (start === -1) return '';
   let depth = 0;
-  for (let i = start; i < raw.length; i++) {
-    const c = raw[i];
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < normalized.length; i++) {
+    const c = normalized[i];
+    if (inString) {
+      if (escape) escape = false;
+      else if (c === '\\') escape = true;
+      else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') {
+      inString = true;
+      continue;
+    }
     if (c === '{') depth++;
     else if (c === '}') {
       depth--;
-      if (depth === 0) return raw.slice(start, i + 1);
+      if (depth === 0) return normalized.slice(start, i + 1);
     }
   }
   return '';
@@ -288,9 +326,18 @@ export async function apiMetadata(
   hint = ''
 ): Promise<{ title_en: string; title_tr: string; description_en: string; description_tr: string }> {
   const prompt = buildMetadataVisionPrompt(hint);
-  const raw = await groqVision(b64, prompt, key, 1024);
-  const jsonStr = extractFirstJsonObject(raw);
-  if (!jsonStr) throw new Error('Invalid response: no JSON');
+  const jsonRetrySuffix =
+    '\n\nCRITICAL: Return ONLY one JSON object with keys title_en, title_tr, description_en, description_tr. No markdown, no thinking tags, no explanation.';
+  let raw = await groqVision(b64, prompt, key, 2048, { jsonMode: true });
+  let jsonStr = extractFirstJsonObject(raw);
+  if (!jsonStr) {
+    raw = await groqVision(b64, prompt + jsonRetrySuffix, key, 2048, { jsonMode: true });
+    jsonStr = extractFirstJsonObject(raw);
+  }
+  if (!jsonStr) {
+    const preview = normalizeModelJsonRaw(raw).slice(0, 120);
+    throw new Error(`Invalid response: no JSON${preview ? ` (${preview}…)` : ''}`);
+  }
   try {
     const o = JSON.parse(jsonStr) as Record<string, string>;
     const clip = (s: unknown, max: number) =>
