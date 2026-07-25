@@ -1,4 +1,59 @@
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_VISION_MODEL = 'qwen/qwen3.6-27b';
+const GROQ_TEXT_MODEL = 'llama-3.3-70b-versatile';
+const GROQ_REQUEST_MS = 90000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function groqChat(
+  body: Record<string, unknown>,
+  key: string,
+  label: string
+): Promise<string> {
+  let delayMs = 3000;
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), GROQ_REQUEST_MS);
+    let res: Response;
+    try {
+      res = await fetch(GROQ_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${key}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        signal: ctrl.signal,
+      });
+    } catch (e) {
+      clearTimeout(timer);
+      if (e instanceof Error && e.name === 'AbortError') {
+        throw new Error(`${label}: İstek zaman aşımına uğradı (90s).`);
+      }
+      throw e;
+    }
+    clearTimeout(timer);
+
+    if (res.ok) {
+      const data = await res.json();
+      return (data?.choices?.[0]?.message?.content ?? '').trim();
+    }
+
+    const text = await res.text();
+    const retryable = res.status === 429 || res.status === 503;
+    if (retryable && attempt < 5) {
+      const retryAfter = Number(res.headers.get('retry-after'));
+      const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : delayMs;
+      await sleep(waitMs);
+      delayMs = Math.min(delayMs * 2, 30000);
+      continue;
+    }
+    throw new Error(`${label}: ${res.status} ${text.slice(0, 200)}`);
+  }
+  throw new Error(`${label}: istek tamamlanamadı.`);
+}
 
 export async function groqVision(
   b64: string,
@@ -6,14 +61,9 @@ export async function groqVision(
   key: string,
   maxTokens = 700
 ): Promise<string> {
-  const res = await fetch(GROQ_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'qwen/qwen3.6-27b',
+  return groqChat(
+    {
+      model: GROQ_VISION_MODEL,
       messages: [
         {
           role: 'user',
@@ -24,14 +74,10 @@ export async function groqVision(
         },
       ],
       max_tokens: maxTokens,
-    }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Groq vision: ${res.status} ${text.slice(0, 200)}`);
-  }
-  const data = await res.json();
-  return (data?.choices?.[0]?.message?.content ?? '').trim();
+    },
+    key,
+    'Groq vision'
+  );
 }
 
 export async function groqText(
@@ -39,24 +85,15 @@ export async function groqText(
   key: string,
   maxTokens = 500
 ): Promise<string> {
-  const res = await fetch(GROQ_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
+  return groqChat(
+    {
+      model: GROQ_TEXT_MODEL,
       messages: [{ role: 'user', content: prompt }],
       max_tokens: maxTokens,
-    }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Groq text: ${res.status} ${text.slice(0, 200)}`);
-  }
-  const data = await res.json();
-  return (data?.choices?.[0]?.message?.content ?? '').trim();
+    },
+    key,
+    'Groq text'
+  );
 }
 
 /** Core instructions; optional REFERENCE block is prepended when hint is non-empty. */

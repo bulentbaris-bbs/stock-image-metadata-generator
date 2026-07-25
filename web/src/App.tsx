@@ -282,28 +282,43 @@ function fetchWithTimeout(url: string, options: RequestInit, ms: number): Promis
 }
 
 async function groqVision(b64: string, prompt: string, key: string, maxTokens = 700): Promise<string> {
-  let res: Response;
-  try {
-    res = await fetchWithTimeout(
-      GROQ_URL,
-      {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'qwen/qwen3.6-27b',
-          messages: [{ role: 'user', content: [{ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${b64}` } }, { type: 'text', text: prompt }] }],
-          max_tokens: maxTokens,
-        }),
-      },
-      GROQ_REQUEST_MS,
-    );
-  } catch (e) {
-    if (e instanceof Error && e.name === 'AbortError') throw new Error('Groq vision: İstek zaman aşımına uğradı (90s). Referans metnini kısaltıp tekrar deneyin.');
-    throw e;
+  let delayMs = 3000;
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    let res: Response;
+    try {
+      res = await fetchWithTimeout(
+        GROQ_URL,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'qwen/qwen3.6-27b',
+            messages: [{ role: 'user', content: [{ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${b64}` } }, { type: 'text', text: prompt }] }],
+            max_tokens: maxTokens,
+          }),
+        },
+        GROQ_REQUEST_MS,
+      );
+    } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') throw new Error('Groq vision: İstek zaman aşımına uğradı (90s). Referans metnini kısaltıp tekrar deneyin.');
+      throw e;
+    }
+    if (res.ok) {
+      const data = await res.json();
+      return (data?.choices?.[0]?.message?.content ?? '').trim();
+    }
+    const text = await res.text();
+    const retryable = res.status === 429 || res.status === 503;
+    if (retryable && attempt < 5) {
+      const retryAfter = Number(res.headers.get('retry-after'));
+      const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : delayMs;
+      await new Promise((r) => setTimeout(r, waitMs));
+      delayMs = Math.min(delayMs * 2, 30000);
+      continue;
+    }
+    throw new Error(`Groq vision: ${res.status} ${text.slice(0, 200)}`);
   }
-  if (!res.ok) throw new Error(`Groq vision: ${res.status} ${(await res.text()).slice(0, 200)}`);
-  const data = await res.json();
-  return (data?.choices?.[0]?.message?.content ?? '').trim();
+  throw new Error('Groq vision: istek tamamlanamadı.');
 }
 
 async function groqText(prompt: string, key: string, maxTokens = 500): Promise<string> {
@@ -1385,33 +1400,28 @@ function AppContent() {
               let adobeEn = allKw.slice(0, ADOBE_MAX);
               let shutterEn = allKw.slice(0, SHUTTER_MAX);
               let istockEn = mapIstock(allKw.slice(0, ISTOCK_MAX));
-              const [groqAdobe, groqShutter, groqIstock] = await Promise.all([
-                adobeEn.length < ADOBE_MAX ? apiKeywords(b64, key, hintText, 'adobe') : Promise.resolve([]),
-                shutterEn.length < SHUTTER_MAX ? apiKeywords(b64, key, hintText, 'shutterstock') : Promise.resolve([]),
-                istockEn.length < ISTOCK_MAX ? apiKeywords(b64, key, hintText, 'istock') : Promise.resolve([]),
-              ]);
+              const groqAdobe = adobeEn.length < ADOBE_MAX ? await apiKeywords(b64, key, hintText, 'adobe') : [];
+              const groqShutter = shutterEn.length < SHUTTER_MAX ? await apiKeywords(b64, key, hintText, 'shutterstock') : [];
+              const groqIstock = istockEn.length < ISTOCK_MAX ? await apiKeywords(b64, key, hintText, 'istock') : [];
               adobeEn = fillKeywordsToMax(adobeEn, ADOBE_MAX, groqAdobe);
               shutterEn = fillKeywordsToMax(shutterEn, SHUTTER_MAX, groqShutter);
               istockEn = fillKeywordsToMax(istockEn, ISTOCK_MAX, mapIstock(groqIstock));
               return { adobeEn, shutterEn, istockEn };
             } catch {
-              const [adobeEn, shutterEn, istockEn] = await Promise.all([
-                apiKeywords(b64, key, hintText, 'adobe').then((k) => k.slice(0, ADOBE_MAX)),
-                apiKeywords(b64, key, hintText, 'shutterstock').then((k) => k.slice(0, SHUTTER_MAX)),
-                apiKeywords(b64, key, hintText, 'istock').then((k) => mapIstock(k.slice(0, ISTOCK_MAX))),
-              ]);
+              const adobeEn = await apiKeywords(b64, key, hintText, 'adobe').then((k) => k.slice(0, ADOBE_MAX));
+              const shutterEn = await apiKeywords(b64, key, hintText, 'shutterstock').then((k) => k.slice(0, SHUTTER_MAX));
+              const istockEn = await apiKeywords(b64, key, hintText, 'istock').then((k) => mapIstock(k.slice(0, ISTOCK_MAX)));
               return { adobeEn, shutterEn, istockEn };
             }
           }
-          const [adobeEn, shutterEn, istockEn] = await Promise.all([
-            apiKeywords(b64, key, hintText, 'adobe').then((k) => k.slice(0, ADOBE_MAX)),
-            apiKeywords(b64, key, hintText, 'shutterstock').then((k) => k.slice(0, SHUTTER_MAX)),
-            apiKeywords(b64, key, hintText, 'istock').then((k) => mapIstock(k.slice(0, ISTOCK_MAX))),
-          ]);
+          const adobeEn = await apiKeywords(b64, key, hintText, 'adobe').then((k) => k.slice(0, ADOBE_MAX));
+          const shutterEn = await apiKeywords(b64, key, hintText, 'shutterstock').then((k) => k.slice(0, SHUTTER_MAX));
+          const istockEn = await apiKeywords(b64, key, hintText, 'istock').then((k) => mapIstock(k.slice(0, ISTOCK_MAX)));
           return { adobeEn, shutterEn, istockEn };
         };
 
-        const [enResult, meta] = await Promise.all([getEnKeywords(), apiMetadata(b64, key, hintText)]);
+        const meta = await apiMetadata(b64, key, hintText);
+        const enResult = await getEnKeywords();
         const { adobeEn, shutterEn, istockEn } = enResult;
         const uniqueEn = buildUniqueEnList(adobeEn, shutterEn, istockEn);
         const trMap = await apiTranslateUniqueKwToMap(uniqueEn, key);
