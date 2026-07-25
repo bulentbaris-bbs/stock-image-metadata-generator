@@ -405,6 +405,18 @@ Also consider: buyer trends (2024-2025), commercial use (advertising, editorial,
 
 Output format (critical): Your response must be exactly one line of comma-separated keywords. No introductory phrase (e.g. no "Here are the keywords:"), no sentences, no bullet points, no story text. Example: freediving, underwater, Halkidiki, Greece, marine life, Aegean sea, clear water, diving, adventure, action camera, discovery, extreme sport, nature, summer, freedom, vacation, travel, deep. Generate exactly 50 keywords.`;
 
+const KEYWORDS_ALL_PLATFORMS =
+  'Adobe Stock, Shutterstock, and iStock/Getty (one unified list of 50 English keywords optimized for all three microstock platforms)';
+
+function parseKeywordCsv(raw: string): string[] {
+  return raw
+    .replace(/["'*\-\n\d.]/g, '')
+    .split(',')
+    .map((k) => k.trim())
+    .filter(Boolean)
+    .slice(0, 50);
+}
+
 export async function apiKeywords(
   b64: string,
   key: string,
@@ -415,12 +427,19 @@ export async function apiKeywords(
   const platformNote = KEYWORDS_BY_PLATFORM[platform] ?? 'microstock platforms';
   const prompt = KEYWORDS_PROMPT.replace('{platform}', platformNote).replace('{hint}', hintTxt);
   const raw = await groqVision(b64, prompt, key, 450);
-  const kws = raw
-    .replace(/["'*\-\n\d.]/g, '')
-    .split(',')
-    .map((k) => k.trim())
-    .filter(Boolean);
-  return kws.slice(0, 50);
+  return parseKeywordCsv(raw);
+}
+
+/** Single vision call for all platforms (faster than 3 separate calls). */
+export async function apiKeywordsAllPlatforms(
+  b64: string,
+  key: string,
+  hint = ''
+): Promise<string[]> {
+  const hintTxt = hint.trim() ? `\nExtra context (important): ${hint}` : '';
+  const prompt = KEYWORDS_PROMPT.replace('{platform}', KEYWORDS_ALL_PLATFORMS).replace('{hint}', hintTxt);
+  const raw = await groqVision(b64, prompt, key, 450);
+  return parseKeywordCsv(raw);
 }
 
 export async function apiTranslate(text: string, toLang: 'tr' | 'en', key: string): Promise<string> {

@@ -15,7 +15,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { apiMetadata } from './api/groq';
+import { apiMetadata, apiKeywordsAllPlatforms } from './api/groq';
 import { apiEverypixels, everypixelToKeywordStrings } from './api/everypixels';
 import { enqueueThumbnail } from './lib/thumbnailQueue';
 import type { CsvColumn, MetadataRecord } from './types';
@@ -281,46 +281,6 @@ function fetchWithTimeout(url: string, options: RequestInit, ms: number): Promis
   return fetch(url, { ...options, signal: ctrl.signal }).finally(() => clearTimeout(id));
 }
 
-async function groqVision(b64: string, prompt: string, key: string, maxTokens = 700): Promise<string> {
-  let delayMs = 3000;
-  for (let attempt = 1; attempt <= 5; attempt++) {
-    let res: Response;
-    try {
-      res = await fetchWithTimeout(
-        GROQ_URL,
-        {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'qwen/qwen3.6-27b',
-            messages: [{ role: 'user', content: [{ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${b64}` } }, { type: 'text', text: prompt }] }],
-            max_tokens: maxTokens,
-          }),
-        },
-        GROQ_REQUEST_MS,
-      );
-    } catch (e) {
-      if (e instanceof Error && e.name === 'AbortError') throw new Error('Groq vision: İstek zaman aşımına uğradı (90s). Referans metnini kısaltıp tekrar deneyin.');
-      throw e;
-    }
-    if (res.ok) {
-      const data = await res.json();
-      return (data?.choices?.[0]?.message?.content ?? '').trim();
-    }
-    const text = await res.text();
-    const retryable = res.status === 429 || res.status === 503;
-    if (retryable && attempt < 5) {
-      const retryAfter = Number(res.headers.get('retry-after'));
-      const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : delayMs;
-      await new Promise((r) => setTimeout(r, waitMs));
-      delayMs = Math.min(delayMs * 2, 30000);
-      continue;
-    }
-    throw new Error(`Groq vision: ${res.status} ${text.slice(0, 200)}`);
-  }
-  throw new Error('Groq vision: istek tamamlanamadı.');
-}
-
 async function groqText(prompt: string, key: string, maxTokens = 500): Promise<string> {
   let res: Response;
   try {
@@ -340,40 +300,6 @@ async function groqText(prompt: string, key: string, maxTokens = 500): Promise<s
   if (!res.ok) throw new Error(`Groq text: ${res.status} ${(await res.text()).slice(0, 200)}`);
   const data = await res.json();
   return (data?.choices?.[0]?.message?.content ?? '').trim();
-}
-
-const KEYWORDS_BY_PLATFORM: Record<string, string> = {
-  adobe: 'Adobe Stock (max 49 keywords)',
-  shutterstock: 'Shutterstock (max 50 keywords)',
-  istock: 'iStock/Getty (max 50 keywords)',
-};
-
-const KEYWORDS_PROMPT = `You are a microstock SEO expert. Generate optimized English keywords for {platform}.{hint}
-
-First, interpret the image as a story in your mind only (who, what, why, when, where, concept). Do NOT output this story or any explanation—use it only internally to choose keywords.
-
-Two-tier list (critical for ranking and automation):
-- Keywords 1–10 (FIRST in the comma-separated list): Scene anchors — highest commercial value. Specific activity, place/region or sea if visible, main subject, equipment, setting, industry. Avoid vague filler in positions 1–10.
-- Keywords 11–50: Broader conceptual / thematic terms (mood, season, travel, compliance, freedom, discovery, risk, vacation, etc.) that buyers still search. Do not repeat the same wording as 1–10; add new angles.
-
-Keyword rules (follow strictly):
-- Order strictly: positions 1–10 = anchors; 11–50 = conceptual expansion. Adobe Stock and Getty rank early positions higher.
-- Specific to general: (1) Specific subject/activity, (2) Place/setting/industry, (3) Objects/gear, (4) Then concepts/themes.
-- Use singular form only; do not add plural variants (e.g. "dog" not "dogs") to save the keyword limit.
-- Include conceptual tags that reflect the mood or message in positions 11–50 (e.g. discovery, compliance, freedom).
-- Only tag what is clearly visible and central to the image; do not add small background objects or elements that are not the main subject.
-- Human subjects (when people are a main subject): Include stock-relevant descriptors buyers search for—man, woman, boy, girl, teenager, young adult, adult, middle age, senior—when gender or broad age band is reasonably clear from the image (face, body, clothing, hair, pose, context). If sex is unclear, use person or people instead of guessing. Do not invent fine-grained demographics or ethnicity not supported by visible evidence. Prefer including at least one such term when a person clearly anchors the scene (often in positions 1–10 alongside activity/setting, or early in 11–50 without duplicating anchors).
-
-Also consider: buyer trends (2024-2025), commercial use (advertising, editorial, web, print), emotions, technical aspects, location/demographics if visible.
-
-Output format (critical): Your response must be exactly one line of comma-separated keywords. No introductory phrase (e.g. no "Here are the keywords:"), no sentences, no bullet points, no story text. Example: freediving, underwater, Halkidiki, Greece, marine life, Aegean sea, clear water, diving, adventure, action camera, discovery, extreme sport, nature, summer, freedom, vacation, travel, deep. Generate exactly 50 keywords.`;
-
-async function apiKeywords(b64: string, key: string, hint: string, platform: 'adobe' | 'shutterstock' | 'istock'): Promise<string[]> {
-  const hintTxt = hint.trim() ? `\nExtra context (important): ${hint}` : '';
-  const prompt = KEYWORDS_PROMPT.replace('{platform}', KEYWORDS_BY_PLATFORM[platform] ?? 'microstock').replace('{hint}', hintTxt);
-  const raw = await groqVision(b64, prompt, key, 450);
-  const kws = raw.replace(/["'*\-\n\d.]/g, '').split(',').map((k) => k.trim()).filter(Boolean);
-  return kws.slice(0, 50);
 }
 
 /** Appends from candidates (no duplicates, case-insensitive) until list length reaches max. */
@@ -1392,6 +1318,13 @@ function AppContent() {
         const epSecret = settings.everypixels_secret?.trim();
 
         const getEnKeywords = async (): Promise<{ adobeEn: string[]; shutterEn: string[]; istockEn: string[] }> => {
+          const groqKwFromVision = async (): Promise<string[]> => apiKeywordsAllPlatforms(b64, key, hintText);
+          const fromGroqList = (groqKw: string[]) => ({
+            adobeEn: groqKw.slice(0, ADOBE_MAX),
+            shutterEn: groqKw.slice(0, SHUTTER_MAX),
+            istockEn: mapIstock(groqKw.slice(0, ISTOCK_MAX)),
+          });
+
           if (epId && epSecret) {
             try {
               const fileForEp = isVideo(entry.file) ? base64JpegToFile(b64, 'frame.jpg') : entry.file;
@@ -1400,28 +1333,25 @@ function AppContent() {
               let adobeEn = allKw.slice(0, ADOBE_MAX);
               let shutterEn = allKw.slice(0, SHUTTER_MAX);
               let istockEn = mapIstock(allKw.slice(0, ISTOCK_MAX));
-              const groqAdobe = adobeEn.length < ADOBE_MAX ? await apiKeywords(b64, key, hintText, 'adobe') : [];
-              const groqShutter = shutterEn.length < SHUTTER_MAX ? await apiKeywords(b64, key, hintText, 'shutterstock') : [];
-              const groqIstock = istockEn.length < ISTOCK_MAX ? await apiKeywords(b64, key, hintText, 'istock') : [];
-              adobeEn = fillKeywordsToMax(adobeEn, ADOBE_MAX, groqAdobe);
-              shutterEn = fillKeywordsToMax(shutterEn, SHUTTER_MAX, groqShutter);
-              istockEn = fillKeywordsToMax(istockEn, ISTOCK_MAX, mapIstock(groqIstock));
+              const needsGroq =
+                adobeEn.length < ADOBE_MAX ||
+                shutterEn.length < SHUTTER_MAX ||
+                istockEn.length < ISTOCK_MAX;
+              if (needsGroq) {
+                const groqKw = await groqKwFromVision();
+                adobeEn = fillKeywordsToMax(adobeEn, ADOBE_MAX, groqKw);
+                shutterEn = fillKeywordsToMax(shutterEn, SHUTTER_MAX, groqKw);
+                istockEn = fillKeywordsToMax(istockEn, ISTOCK_MAX, mapIstock(groqKw));
+              }
               return { adobeEn, shutterEn, istockEn };
             } catch {
-              const adobeEn = await apiKeywords(b64, key, hintText, 'adobe').then((k) => k.slice(0, ADOBE_MAX));
-              const shutterEn = await apiKeywords(b64, key, hintText, 'shutterstock').then((k) => k.slice(0, SHUTTER_MAX));
-              const istockEn = await apiKeywords(b64, key, hintText, 'istock').then((k) => mapIstock(k.slice(0, ISTOCK_MAX)));
-              return { adobeEn, shutterEn, istockEn };
+              return fromGroqList(await groqKwFromVision());
             }
           }
-          const adobeEn = await apiKeywords(b64, key, hintText, 'adobe').then((k) => k.slice(0, ADOBE_MAX));
-          const shutterEn = await apiKeywords(b64, key, hintText, 'shutterstock').then((k) => k.slice(0, SHUTTER_MAX));
-          const istockEn = await apiKeywords(b64, key, hintText, 'istock').then((k) => mapIstock(k.slice(0, ISTOCK_MAX)));
-          return { adobeEn, shutterEn, istockEn };
+          return fromGroqList(await groqKwFromVision());
         };
 
-        const meta = await apiMetadata(b64, key, hintText);
-        const enResult = await getEnKeywords();
+        const [meta, enResult] = await Promise.all([apiMetadata(b64, key, hintText), getEnKeywords()]);
         const { adobeEn, shutterEn, istockEn } = enResult;
         const uniqueEn = buildUniqueEnList(adobeEn, shutterEn, istockEn);
         const trMap = await apiTranslateUniqueKwToMap(uniqueEn, key);
