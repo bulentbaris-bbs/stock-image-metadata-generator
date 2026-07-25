@@ -64,43 +64,44 @@ export async function groqVision(
   b64: string,
   prompt: string,
   key: string,
-  maxTokens = 700,
-  options?: { jsonMode?: boolean }
+  maxTokens = 700
 ): Promise<string> {
-  const body: Record<string, unknown> = {
-    model: GROQ_VISION_MODEL,
-    temperature: options?.jsonMode ? 0.2 : 1,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${b64}` } },
-          { type: 'text', text: prompt },
-        ],
-      },
-    ],
-    max_tokens: maxTokens,
-  };
-  if (options?.jsonMode) {
-    body.response_format = { type: 'json_object' };
-  }
-  return groqChat(body, key, 'Groq vision');
+  return groqChat(
+    {
+      model: GROQ_VISION_MODEL,
+      temperature: 0.4,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${b64}` } },
+            { type: 'text', text: prompt },
+          ],
+        },
+      ],
+      max_tokens: maxTokens,
+    },
+    key,
+    'Groq vision'
+  );
 }
 
 export async function groqText(
   prompt: string,
   key: string,
-  maxTokens = 500
+  maxTokens = 500,
+  options?: { jsonMode?: boolean }
 ): Promise<string> {
-  return groqChat(
-    {
-      model: GROQ_TEXT_MODEL,
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: maxTokens,
-    },
-    key,
-    'Groq text'
-  );
+  const body: Record<string, unknown> = {
+    model: GROQ_TEXT_MODEL,
+    temperature: options?.jsonMode ? 0.2 : 1,
+    messages: [{ role: 'user', content: prompt }],
+    max_tokens: maxTokens,
+  };
+  if (options?.jsonMode) {
+    body.response_format = { type: 'json_object' };
+  }
+  return groqChat(body, key, 'Groq text');
 }
 
 /** Core instructions; optional REFERENCE block is prepended when hint is non-empty. */
@@ -320,6 +321,16 @@ title_tr: ${titleTr}${ref}`;
   }
 }
 
+async function repairMetadataJsonWithText(key: string, raw: string): Promise<string> {
+  const snippet = normalizeModelJsonRaw(raw).slice(0, 6000);
+  const p = `Convert the following stock-photo metadata draft into valid JSON with exactly these keys: title_en, title_tr, description_en, description_tr. All values must be non-empty strings. Preserve meaning; fix formatting only.
+
+Draft:
+${snippet}`;
+  const repaired = await groqText(p, key, 1200, { jsonMode: true });
+  return extractFirstJsonObject(repaired);
+}
+
 export async function apiMetadata(
   b64: string,
   key: string,
@@ -327,12 +338,15 @@ export async function apiMetadata(
 ): Promise<{ title_en: string; title_tr: string; description_en: string; description_tr: string }> {
   const prompt = buildMetadataVisionPrompt(hint);
   const jsonRetrySuffix =
-    '\n\nCRITICAL: Return ONLY one JSON object with keys title_en, title_tr, description_en, description_tr. No markdown, no thinking tags, no explanation.';
-  let raw = await groqVision(b64, prompt, key, 2048, { jsonMode: true });
+    '\n\nCRITICAL: Your entire reply must be ONE JSON object only, starting with { and ending with }. Keys: title_en, title_tr, description_en, description_tr. No markdown, no thinking tags, no other text.';
+  let raw = await groqVision(b64, prompt, key, 2048);
   let jsonStr = extractFirstJsonObject(raw);
   if (!jsonStr) {
-    raw = await groqVision(b64, prompt + jsonRetrySuffix, key, 2048, { jsonMode: true });
+    raw = await groqVision(b64, prompt + jsonRetrySuffix, key, 2048);
     jsonStr = extractFirstJsonObject(raw);
+  }
+  if (!jsonStr && raw.trim()) {
+    jsonStr = await repairMetadataJsonWithText(key, raw);
   }
   if (!jsonStr) {
     const preview = normalizeModelJsonRaw(raw).slice(0, 120);
