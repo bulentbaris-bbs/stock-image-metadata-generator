@@ -133,7 +133,7 @@ def get_b64(file_path, px=768):
 # ── Groq API ──────────────────────────────────────────────────────────────────
 def groq_vision(b64, prompt, key, max_tokens=700):
     r = requests.post(GROQ_URL, json={
-        "model":"meta-llama/llama-4-scout-17b-16e-instruct",
+        "model":"qwen/qwen3.6-27b",
         "messages":[{"role":"user","content":[
             {"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b64}"}},
             {"type":"text","text":prompt}

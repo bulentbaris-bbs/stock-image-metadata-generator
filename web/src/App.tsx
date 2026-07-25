@@ -290,7 +290,7 @@ async function groqVision(b64: string, prompt: string, key: string, maxTokens = 
         method: 'POST',
         headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+          model: 'qwen/qwen3.6-27b',
           messages: [{ role: 'user', content: [{ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${b64}` } }, { type: 'text', text: prompt }] }],
           max_tokens: maxTokens,
         }),
