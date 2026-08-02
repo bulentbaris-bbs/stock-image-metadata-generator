@@ -1,27 +1,42 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #0e1117;
-  --color-card: #161b26;
-  --color-card2: #1c2235;
-  --color-border: #252d42;
-  --color-text: #e0e4f0;
-  --color-text2: #8892aa;
-  --color-text3: #404860;
-  --color-accent: #4070f4;
-  --color-accentH: #2d5de0;
-  --color-input: #12161f;
-  --color-sel: #1a2440;
-  --color-hover: #1a2030;
-  --color-green: #22c55e;
-  --color-greenBg: #0f2318;
+  --color-bg: #f5f5f7;
+  --color-bgSidebar: #fbfbfc;
+  --color-card: #ffffff;
+  --color-card2: #f5f5f7;
+  --color-border: #e4e4e7;
+  --color-borderSoft: #ededef;
+  --color-text: #1d1d1f;
+  --color-text2: #6e6e73;
+  --color-text3: #a1a1a6;
+  --color-accent: #0071e3;
+  --color-accentSoft: #e8f1fd;
+  --color-accentH: #0077ed;
+  --color-input: #ffffff;
+  --color-sel: #e8f1fd;
+  --color-hover: rgba(0, 0, 0, 0.02);
+  --color-green: #1f9254;
+  --color-greenBg: #e7f6ed;
+  --color-red: #d0392b;
+  --color-redBg: #fceae8;
+  --color-tag: #f2f2f3;
+  --color-kwBar: #f7f7f8;
+  --color-chip: #f5f5f7;
 }
 
 body {
   margin: 0;
-  background-color: #0e1117;
-  color: #e0e4f0;
-  font-family: system-ui, -apple-system, sans-serif;
+  background-color: #f5f5f7;
+  color: #1d1d1f;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.011em;
+}
+
+.mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
 }
 
 #root {
@@ -42,4 +57,13 @@ body {
 .btn-press:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-accent);
+}
+
+/* Keyboard-navigation focus ring for kw-bar / tabs "stops" (mirrors the design mockup's kbZone system) */
+.kb-focus {
+  box-shadow: inset 0 0 0 2px var(--color-accent) !important;
+}
+.kb-focus-tabs {
+  box-shadow: inset 0 -2px 0 0 var(--color-accent);
+  border-radius: 6px 6px 0 0;
 }

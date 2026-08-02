@@ -58,13 +58,20 @@ export async function apiEverypixels(
   const form = new FormData();
   form.append('data', file, file.name);
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: 'Basic ' + btoa(`${clientId}:${clientSecret}`),
-    },
-    body: form,
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Basic ' + btoa(`${clientId}:${clientSecret}`),
+      },
+      body: form,
+    });
+  } catch {
+    throw new Error(
+      'Everypixel: İstek tarayıcıdan gönderilemedi (muhtemelen CORS engeli). Bu API doğrudan tarayıcıdan çağrılamıyor olabilir — bir backend proxy gerekebilir.'
+    );
+  }
 
   const text = await res.text();
   if (!res.ok) {

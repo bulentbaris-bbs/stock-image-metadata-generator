@@ -1,4 +1,4 @@
-/** Shared metadata shape for CSV and localStorage (see App.tsx). */
+/** Shared metadata shape for localStorage. */
 export interface MetadataRecord {
   file_name: string;
   created_at: string;
@@ -14,20 +14,27 @@ export interface MetadataRecord {
   istock_keywords_tr: string[];
 }
 
-export const CSV_HEADERS = [
-  'file_path',
-  'file_name',
-  'created_at',
-  'title_en',
-  'title_tr',
-  'description_en',
-  'description_tr',
-  'adobe_keywords_en',
-  'adobe_keywords_tr',
-  'shutter_keywords_en',
-  'shutter_keywords_tr',
-  'istock_keywords_en',
-  'istock_keywords_tr',
-] as const;
+export interface FileEntry {
+  id: string;
+  file: File;
+  name: string;
+}
 
-export type CsvColumn = (typeof CSV_HEADERS)[number];
+export interface Settings {
+  /** Up to 4 Groq API keys; rotated automatically when one hits its rate limit. */
+  groq_api_keys: string[];
+  everypixels_id: string;
+  everypixels_secret: string;
+  /** Optional free-tier fallback used only once every Groq key is rate-limited. */
+  gemini_api_key: string;
+}
+
+export type IStockMap = Record<string, string>;
+
+export type KeywordKey =
+  | 'adobe_keywords_en'
+  | 'adobe_keywords_tr'
+  | 'shutter_keywords_en'
+  | 'shutter_keywords_tr'
+  | 'istock_keywords_en'
+  | 'istock_keywords_tr';

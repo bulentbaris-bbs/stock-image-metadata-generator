@@ -1,7 +1,16 @@
+import { geminiText, geminiVision } from './gemini';
+import { KeyPool } from '../lib/keyPool';
+
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_VISION_MODEL = 'qwen/qwen3.6-27b';
 const GROQ_TEXT_MODEL = 'llama-3.3-70b-versatile';
 const GROQ_REQUEST_MS = 90000;
+
+/** Groq key(s) + optional Gemini fallback key, threaded through every AI call. */
+export interface AiCreds {
+  groqKeys: string[];
+  geminiKey?: string;
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -18,13 +27,48 @@ function enqueueVision<T>(task: () => Promise<T>): Promise<T> {
   return run;
 }
 
-async function groqChat(
-  body: Record<string, unknown>,
-  key: string,
-  label: string
-): Promise<string> {
-  let delayMs = 3000;
-  for (let attempt = 1; attempt <= 5; attempt++) {
+/** Try Groq first (key pool with rotation); fall back to Gemini only if Groq fails and a Gemini key is set. */
+async function withGeminiFallback<T>(
+  creds: AiCreds,
+  groqCall: (keys: string[]) => Promise<T>,
+  geminiCall: (geminiKey: string) => Promise<T>,
+): Promise<T> {
+  const groqKeys = creds.groqKeys.filter(Boolean);
+  const geminiKey = creds.geminiKey?.trim();
+  if (groqKeys.length > 0) {
+    try {
+      return await groqCall(groqKeys);
+    } catch (e) {
+      if (!geminiKey) throw e;
+      try {
+        return await geminiCall(geminiKey);
+      } catch {
+        throw e; // surface the original (more specific) Groq error
+      }
+    }
+  }
+  if (geminiKey) return geminiCall(geminiKey);
+  throw new Error('Groq API key girilmemiş. Ayarlar\'dan en az bir key ekleyin.');
+}
+
+/** Parse Groq's "Xs" rate-limit-reset header into milliseconds. */
+function parseResetSeconds(header: string | null): number | null {
+  if (!header) return null;
+  const m = /([\d.]+)s/.exec(header);
+  return m ? Math.ceil(parseFloat(m[1]) * 1000) : null;
+}
+
+async function groqChat(body: Record<string, unknown>, keys: string[], label: string): Promise<string> {
+  const pool = new KeyPool(keys);
+  const maxAttempts = pool.size * 2 + 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const key = pool.next();
+    if (!key) {
+      const waitMs = Math.max(1000, Math.min(pool.earliestAvailableAt() - Date.now(), 60000));
+      await sleep(waitMs);
+      continue;
+    }
+
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), GROQ_REQUEST_MS);
     let res: Response;
@@ -41,9 +85,9 @@ async function groqChat(
     } catch (e) {
       clearTimeout(timer);
       if (e instanceof Error && e.name === 'AbortError') {
-        throw new Error(`${label}: İstek zaman aşımına uğradı (90s).`);
+        throw new Error(`${label}: İstek zaman aşımına uğradı (90 saniye). Lütfen tekrar deneyin.`);
       }
-      throw e;
+      throw new Error(`${label}: Bağlantı kurulamadı. İnternet bağlantınızı kontrol edin.`);
     }
     clearTimeout(timer);
 
@@ -58,53 +102,63 @@ async function groqChat(
     }
 
     const text = await res.text();
-    const retryable = res.status === 429 || res.status === 503;
-    if (retryable && attempt < 5) {
-      const retryAfter = Number(res.headers.get('retry-after'));
-      let waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : delayMs;
-      if (res.status === 429 && /tokens per minute|TPM|rate limit/i.test(text)) {
-        waitMs = Math.max(waitMs, 20000);
-      }
-      await sleep(waitMs);
-      delayMs = Math.min(delayMs * 2, 60000);
-      continue;
+
+    if (res.status === 401 || res.status === 403) {
+      throw new Error(`${label}: API key hatalı görünüyor. Ayarlar'dan kontrol edin.`);
     }
-    throw new Error(`${label}: ${res.status} ${text.slice(0, 200)}`);
+
+    if (res.status === 429 || res.status === 503) {
+      const retryAfter = Number(res.headers.get('retry-after'));
+      const resetTokens = parseResetSeconds(res.headers.get('x-ratelimit-reset-tokens'));
+      const resetRequests = parseResetSeconds(res.headers.get('x-ratelimit-reset-requests'));
+      let cooldownMs = 20000;
+      if (Number.isFinite(retryAfter) && retryAfter > 0) cooldownMs = retryAfter * 1000;
+      else if (resetTokens || resetRequests) cooldownMs = Math.max(resetTokens ?? 0, resetRequests ?? 0);
+      pool.markCooldown(key, Math.max(cooldownMs, 1000));
+      continue; // try the next key immediately, no sleep needed if others are free
+    }
+
+    throw new Error(`${label}: Sunucu hatası (${res.status}). ${text.slice(0, 150)}`);
   }
-  throw new Error(`${label}: istek tamamlanamadı.`);
+  throw new Error(`${label}: API limitiniz doldu. Lütfen biraz bekleyip tekrar deneyin (veya Ayarlar'dan ek bir key/Gemini yedeği ekleyin).`);
 }
 
 export async function groqVision(
   b64: string,
   prompt: string,
-  key: string,
+  creds: AiCreds,
   maxTokens = 700
 ): Promise<string> {
   return enqueueVision(() =>
-    groqChat(
-      {
-        model: GROQ_VISION_MODEL,
-        temperature: 0.4,
-        messages: [
+    withGeminiFallback(
+      creds,
+      (keys) =>
+        groqChat(
           {
-            role: 'user',
-            content: [
-              { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${b64}` } },
-              { type: 'text', text: prompt },
+            model: GROQ_VISION_MODEL,
+            temperature: 0.4,
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${b64}` } },
+                  { type: 'text', text: prompt },
+                ],
+              },
             ],
+            max_tokens: maxTokens,
           },
-        ],
-        max_tokens: maxTokens,
-      },
-      key,
-      'Groq vision'
+          keys,
+          'Groq vision'
+        ),
+      (geminiKey) => geminiVision(b64, prompt, geminiKey, maxTokens)
     )
   );
 }
 
 export async function groqText(
   prompt: string,
-  key: string,
+  creds: AiCreds,
   maxTokens = 500,
   options?: { jsonMode?: boolean }
 ): Promise<string> {
@@ -117,7 +171,11 @@ export async function groqText(
   if (options?.jsonMode) {
     body.response_format = { type: 'json_object' };
   }
-  return groqChat(body, key, 'Groq text');
+  return withGeminiFallback(
+    creds,
+    (keys) => groqChat(body, keys, 'Groq text'),
+    (geminiKey) => geminiText(prompt, geminiKey, maxTokens)
+  );
 }
 
 /** Core instructions; optional REFERENCE block is prepended when hint is non-empty. */
@@ -231,7 +289,7 @@ function textNeedsHedgeFix(s: string): boolean {
 }
 
 async function runHedgeRefinePass(
-  key: string,
+  creds: AiCreds,
   title_en: string,
   title_tr: string,
   description_en: string,
@@ -252,7 +310,7 @@ title_tr: ${JSON.stringify(title_tr)}
 description_en: ${JSON.stringify(description_en)}
 description_tr: ${JSON.stringify(description_tr)}`;
   try {
-    const raw = await groqText(p, key, 900);
+    const raw = await groqText(p, creds, 900);
     const jsonStr = extractFirstJsonObject(raw);
     if (!jsonStr) return null;
     const o = JSON.parse(jsonStr) as Record<string, string>;
@@ -271,7 +329,7 @@ description_tr: ${JSON.stringify(description_tr)}`;
 
 /** Up to two Groq text passes if hedging patterns remain (vision model often ignores long bans). */
 async function refineMetadataAgainstHedging(
-  key: string,
+  creds: AiCreds,
   title_en: string,
   title_tr: string,
   description_en: string,
@@ -290,7 +348,7 @@ async function refineMetadataAgainstHedging(
     ) {
       break;
     }
-    const next = await runHedgeRefinePass(key, tEn, tTr, dEn, dTr);
+    const next = await runHedgeRefinePass(creds, tEn, tTr, dEn, dTr);
     if (!next) break;
     tEn = next.title_en;
     tTr = next.title_tr;
@@ -301,7 +359,7 @@ async function refineMetadataAgainstHedging(
 }
 
 async function fillDescriptionsFromTitles(
-  key: string,
+  creds: AiCreds,
   titleEn: string,
   titleTr: string,
   hint: string,
@@ -322,7 +380,7 @@ Rules:
 title_en: ${titleEn}
 title_tr: ${titleTr}${ref}`;
   try {
-    const raw = await groqText(p, key, 550);
+    const raw = await groqText(p, creds, 550);
     const jsonStr = extractFirstJsonObject(raw);
     if (!jsonStr) return null;
     const o = JSON.parse(jsonStr) as Record<string, string>;
@@ -337,7 +395,7 @@ title_tr: ${titleTr}${ref}`;
   }
 }
 
-async function repairMetadataJsonWithText(key: string, raw: string, withKeywords = false): Promise<string> {
+async function repairMetadataJsonWithText(creds: AiCreds, raw: string, withKeywords = false): Promise<string> {
   const snippet = normalizeModelJsonRaw(raw).slice(0, 6000);
   const keys = withKeywords
     ? 'title_en, title_tr, description_en, description_tr, keywords_en'
@@ -349,7 +407,7 @@ async function repairMetadataJsonWithText(key: string, raw: string, withKeywords
 
 Draft:
 ${snippet}`;
-  const repaired = await groqText(p, key, 1400, { jsonMode: true });
+  const repaired = await groqText(p, creds, 1400, { jsonMode: true });
   return extractFirstJsonObject(repaired);
 }
 
@@ -375,7 +433,7 @@ export function buildCombinedVisionPrompt(hint: string): string {
 }
 
 async function finalizeMetadataRecord(
-  key: string,
+  creds: AiCreds,
   hint: string,
   o: Record<string, unknown>
 ): Promise<{ title_en: string; title_tr: string; description_en: string; description_tr: string }> {
@@ -386,19 +444,19 @@ async function finalizeMetadataRecord(
   let description_en = clip(o.description_en, 2000);
   let description_tr = clip(o.description_tr, 2000);
   if (!description_en.trim() || !description_tr.trim()) {
-    const filled = await fillDescriptionsFromTitles(key, title_en, title_tr, hint);
+    const filled = await fillDescriptionsFromTitles(creds, title_en, title_tr, hint);
     if (filled) {
       description_en = filled.description_en;
       description_tr = filled.description_tr;
     }
   }
-  const refined = await refineMetadataAgainstHedging(key, title_en, title_tr, description_en, description_tr);
+  const refined = await refineMetadataAgainstHedging(creds, title_en, title_tr, description_en, description_tr);
   return refined;
 }
 
 export async function apiMetadataWithKeywords(
   b64: string,
-  key: string,
+  creds: AiCreds,
   hint = ''
 ): Promise<{
   title_en: string;
@@ -408,47 +466,47 @@ export async function apiMetadataWithKeywords(
   keywords: string[];
 }> {
   const prompt = buildCombinedVisionPrompt(hint);
-  let raw = await groqVision(b64, prompt, key, 2048);
+  const raw = await groqVision(b64, prompt, creds, 2048);
   let jsonStr = extractFirstJsonObject(raw);
   if (!jsonStr && raw.trim()) {
-    jsonStr = await repairMetadataJsonWithText(key, raw, true);
+    jsonStr = await repairMetadataJsonWithText(creds, raw, true);
   }
   if (!jsonStr) {
     const preview = normalizeModelJsonRaw(raw).slice(0, 120);
-    throw new Error(`Invalid response: no JSON${preview ? ` (${preview}…)` : ''}`);
+    throw new Error(`Yanıt işlenemedi: JSON bulunamadı${preview ? ` (${preview}…)` : ''}`);
   }
   try {
     const o = JSON.parse(jsonStr) as Record<string, unknown>;
-    const meta = await finalizeMetadataRecord(key, hint, o);
+    const meta = await finalizeMetadataRecord(creds, hint, o);
     const keywords = parseKeywordsField(o.keywords_en);
     return { ...meta, keywords };
   } catch {
-    throw new Error('Invalid response: JSON parse failed');
+    throw new Error('Yanıt işlenemedi: JSON ayrıştırılamadı.');
   }
 }
 
 export async function apiMetadata(
   b64: string,
-  key: string,
+  creds: AiCreds,
   hint = ''
 ): Promise<{ title_en: string; title_tr: string; description_en: string; description_tr: string }> {
   const prompt = buildMetadataVisionPrompt(hint);
   const jsonRetrySuffix =
     '\n\nCRITICAL: Your entire reply must be ONE JSON object only, starting with { and ending with }. Keys: title_en, title_tr, description_en, description_tr. No markdown, no thinking tags, no other text.';
-  let raw = await groqVision(b64, prompt + jsonRetrySuffix, key, 2048);
+  const raw = await groqVision(b64, prompt + jsonRetrySuffix, creds, 2048);
   let jsonStr = extractFirstJsonObject(raw);
   if (!jsonStr && raw.trim()) {
-    jsonStr = await repairMetadataJsonWithText(key, raw, false);
+    jsonStr = await repairMetadataJsonWithText(creds, raw, false);
   }
   if (!jsonStr) {
     const preview = normalizeModelJsonRaw(raw).slice(0, 120);
-    throw new Error(`Invalid response: no JSON${preview ? ` (${preview}…)` : ''}`);
+    throw new Error(`Yanıt işlenemedi: JSON bulunamadı${preview ? ` (${preview}…)` : ''}`);
   }
   try {
     const o = JSON.parse(jsonStr) as Record<string, unknown>;
-    return finalizeMetadataRecord(key, hint, o);
+    return finalizeMetadataRecord(creds, hint, o);
   } catch {
-    throw new Error('Invalid response: JSON parse failed');
+    throw new Error('Yanıt işlenemedi: JSON ayrıştırılamadı.');
   }
 }
 
@@ -473,49 +531,72 @@ Keyword rules (follow strictly):
 - Include conceptual tags that reflect the mood or message in positions 11–50 (e.g. discovery, compliance, freedom).
 - Only tag what is clearly visible and central to the image; do not add small background objects or elements that are not the main subject.
 - Human subjects (when people are a main subject): Include stock-relevant descriptors buyers search for—man, woman, boy, girl, teenager, young adult, adult, middle age, senior—when gender or broad age band is reasonably clear from the image (face, body, clothing, hair, pose, context). If sex is unclear, use person or people instead of guessing. Do not invent fine-grained demographics or ethnicity not supported by visible evidence. Prefer including at least one such term when a person clearly anchors the scene (often in positions 1–10 alongside activity/setting, or early in 11–50 without duplicating anchors).
+- Every entry must be a short keyword or keyword phrase (1–4 words), never a sentence. NEVER describe image layout, composition, or grid position (e.g. "top left", "bottom right", "middle center", "close up of the face") as a keyword — those are not searchable stock terms.
+- iStock/Getty controlled-vocabulary fit (this same list is also used for iStock): prefer plain, moderation-safe terms Getty accepts. Avoid brand names, product names, and recognizable trademarks/logos unless clearly editorial and central to the image. Avoid slang, invented compound words, or overly niche jargon — use the plain term a buyer would actually search (e.g. "smartphone" not "handheld device thingy").
 
 Also consider: buyer trends (2024-2025), commercial use (advertising, editorial, web, print), emotions, technical aspects, location/demographics if visible.
 
-Output format (critical): Your response must be exactly one line of comma-separated keywords. No introductory phrase (e.g. no "Here are the keywords:"), no sentences, no bullet points, no story text. Example: freediving, underwater, Halkidiki, Greece, marine life, Aegean sea, clear water, diving, adventure, action camera, discovery, extreme sport, nature, summer, freedom, vacation, travel, deep. Generate exactly 50 keywords.`;
+Output format (critical): Your response must be exactly one line of comma-separated keywords. No introductory phrase (e.g. no "Here are the keywords:"), no sentences, no bullet points, no story text, no layout/composition labels. Example: freediving, underwater, Halkidiki, Greece, marine life, Aegean sea, clear water, diving, adventure, action camera, discovery, extreme sport, nature, summer, freedom, vacation, travel, deep. Generate exactly 50 keywords.`;
 
 const KEYWORDS_ALL_PLATFORMS =
   'Adobe Stock, Shutterstock, and iStock/Getty (one unified list of 50 English keywords optimized for all three microstock platforms)';
 
+/** Position/layout narration the model sometimes emits instead of a real keyword (e.g. "Bottom left: Close up of the face"). */
+const LAYOUT_LABEL_RE = /\b(top|bottom|middle|center)\s+(left|right|center)\b|\bclose[\s-]?up\s+of\b|\(side view\)/i;
+
+function looksLikeKeyword(s: string): boolean {
+  if (!s) return false;
+  if (s.includes(':')) return false;
+  if (LAYOUT_LABEL_RE.test(s)) return false;
+  if (HEDGE_EN_RE.test(s) || HEDGE_TR_RE.test(s)) return false; // e.g. "bearded man (likely a manager"
+  const openParens = (s.match(/\(/g) ?? []).length;
+  const closeParens = (s.match(/\)/g) ?? []).length;
+  if (openParens !== closeParens) return false; // truncated parenthetical, usually from a mis-split sentence
+  const wordCount = s.split(/\s+/).filter(Boolean).length;
+  return wordCount > 0 && wordCount <= 5;
+}
+
+/** Split on commas, newlines, or semicolons — the model doesn't always use commas as instructed. */
 function parseKeywordCsv(raw: string): string[] {
   return raw
-    .replace(/["'*\-\n\d.]/g, '')
-    .split(',')
-    .map((k) => k.trim())
-    .filter(Boolean)
+    .split(/[,;\n]+/)
+    .map((k) =>
+      k
+        .replace(/^[\s"'*\-–—]+/, '')
+        .replace(/^\d+[.)]\s*/, '') // strip leading "1." / "2)" numbering
+        .replace(/["'*\-–—\s]+$/, '')
+        .trim()
+    )
+    .filter(looksLikeKeyword)
     .slice(0, 50);
 }
 
 export async function apiKeywords(
   b64: string,
-  key: string,
+  creds: AiCreds,
   hint = '',
   platform: 'adobe' | 'shutterstock' | 'istock' = 'adobe'
 ): Promise<string[]> {
   const hintTxt = hint.trim() ? `\nExtra context (important): ${hint}` : '';
   const platformNote = KEYWORDS_BY_PLATFORM[platform] ?? 'microstock platforms';
   const prompt = KEYWORDS_PROMPT.replace('{platform}', platformNote).replace('{hint}', hintTxt);
-  const raw = await groqVision(b64, prompt, key, 450);
+  const raw = await groqVision(b64, prompt, creds, 450);
   return parseKeywordCsv(raw);
 }
 
 /** Single vision call for all platforms (faster than 3 separate calls). */
 export async function apiKeywordsAllPlatforms(
   b64: string,
-  key: string,
+  creds: AiCreds,
   hint = ''
 ): Promise<string[]> {
   const hintTxt = hint.trim() ? `\nExtra context (important): ${hint}` : '';
   const prompt = KEYWORDS_PROMPT.replace('{platform}', KEYWORDS_ALL_PLATFORMS).replace('{hint}', hintTxt);
-  const raw = await groqVision(b64, prompt, key, 450);
+  const raw = await groqVision(b64, prompt, creds, 450);
   return parseKeywordCsv(raw);
 }
 
-export async function apiTranslate(text: string, toLang: 'tr' | 'en', key: string): Promise<string> {
+export async function apiTranslate(text: string, toLang: 'tr' | 'en', creds: AiCreds): Promise<string> {
   const lang = toLang === 'tr' ? 'Türkçe' : 'English';
   const trExtra =
     toLang === 'tr'
@@ -523,18 +604,126 @@ export async function apiTranslate(text: string, toLang: 'tr' | 'en', key: strin
       : '';
   return groqText(
     `Translate to ${lang}. Keep it natural and professional.${trExtra} Return ONLY the translation:\n\n${text}`,
-    key,
+    creds,
     350
   );
 }
 
-export async function apiTranslateKw(kws: string[], key: string): Promise<string[]> {
+export async function apiTranslateKw(kws: string[], creds: AiCreds): Promise<string[]> {
   try {
     const chunk = kws.slice(0, 50).join(', ');
-    const raw = await apiTranslate(chunk, 'tr', key);
+    const raw = await apiTranslate(chunk, 'tr', creds);
     const parts = raw.split(',').map((p) => p.trim());
     return [...parts, ...kws].slice(0, kws.length);
   } catch {
     return kws;
   }
+}
+
+/** Appends from candidates (no duplicates, case-insensitive) until list length reaches max. */
+export function fillKeywordsToMax(existing: string[], max: number, candidates: string[]): string[] {
+  const set = new Set(existing.map((k) => k.toLowerCase().trim()));
+  const out = [...existing];
+  for (const k of candidates) {
+    if (out.length >= max) break;
+    const t = k.trim();
+    if (!t || set.has(t.toLowerCase())) continue;
+    set.add(t.toLowerCase());
+    out.push(t);
+  }
+  return out;
+}
+
+const TR_KW_BATCH_SIZE = 25;
+const TR_KW_NUMBERED_PROMPT =
+  'Translate each numbered line to Turkish. Keep the same numbers. Return ONLY the numbered Turkish translations, one per line. No other text.\n\n';
+
+function parseNumberedLines(raw: string, fallback: string[]): string[] {
+  const out = [...fallback];
+  const re = /^\s*(\d+)\.\s*(.*)$/;
+  for (const line of raw.split('\n')) {
+    const m = line.trim().match(re);
+    if (m) {
+      const num = parseInt(m[1], 10);
+      const text = m[2].trim();
+      if (num >= 1 && num <= fallback.length) out[num - 1] = text || fallback[num - 1];
+    }
+  }
+  return out;
+}
+
+export async function apiTranslateKwNumbered(kws: string[], creds: AiCreds): Promise<string[]> {
+  if (kws.length === 0) return [];
+  const list = kws.slice(0, 50);
+  const out: string[] = [];
+  for (let i = 0; i < list.length; i += TR_KW_BATCH_SIZE) {
+    const chunk = list.slice(i, i + TR_KW_BATCH_SIZE);
+    try {
+      const input = chunk.map((w, j) => `${j + 1}. ${w}`).join('\n');
+      const raw = await groqText(TR_KW_NUMBERED_PROMPT + input, creds, 400);
+      out.push(...parseNumberedLines(raw, chunk));
+    } catch {
+      out.push(...chunk);
+    }
+  }
+  return out;
+}
+
+/** Collect unique English keywords from all three platform lists (first occurrence order, case-insensitive dedupe). */
+export function buildUniqueEnList(adobeEn: string[], shutterEn: string[], istockEn: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const list of [adobeEn, shutterEn, istockEn]) {
+    for (const k of list) {
+      const t = (k ?? '').trim();
+      if (!t) continue;
+      const lower = t.toLowerCase();
+      if (seen.has(lower)) continue;
+      seen.add(lower);
+      out.push(t);
+    }
+  }
+  return out;
+}
+
+/** Translate a list of unique EN keywords and return a map: lowercase EN -> TR. Same EN always gets same TR. */
+export async function apiTranslateUniqueKwToMap(uniqueEn: string[], creds: AiCreds): Promise<Map<string, string>> {
+  const trMap = new Map<string, string>();
+  if (uniqueEn.length === 0) return trMap;
+  const list = uniqueEn.slice(0, 150);
+  for (let i = 0; i < list.length; i += TR_KW_BATCH_SIZE) {
+    const chunk = list.slice(i, i + TR_KW_BATCH_SIZE);
+    try {
+      const input = chunk.map((w, j) => `${j + 1}. ${w}`).join('\n');
+      const raw = await groqText(TR_KW_NUMBERED_PROMPT + input, creds, 400);
+      const trChunk = parseNumberedLines(raw, chunk);
+      for (let j = 0; j < chunk.length; j++) {
+        trMap.set(chunk[j].toLowerCase(), trChunk[j] ?? chunk[j]);
+      }
+    } catch {
+      for (const w of chunk) trMap.set(w.toLowerCase(), w);
+    }
+  }
+  return trMap;
+}
+
+/** Apply EN->TR map to a keyword list (preserves order; missing keys stay as EN). */
+export function applyTrMap(enList: string[], trMap: Map<string, string>): string[] {
+  return enList.map((en) => {
+    const t = (en ?? '').trim();
+    if (!t) return '';
+    return trMap.get(t.toLowerCase()) ?? t;
+  });
+}
+
+const TR_TRANSLATE_PROMPT =
+  'Translate the following to natural Turkish for stock/advertising copy. Return only the Turkish text, no explanation or quotes. ' +
+  'Use direct, confident wording; do not add hedging (no muhtemelen, belki, sanırım, olabilir, gibi görünüyor, büyük ihtimalle). ' +
+  'Prefer affirmative present-tense that mirrors the source without softening.\n\n';
+
+export async function apiTranslateToTurkish(text: string, creds: AiCreds): Promise<string> {
+  const t = (text ?? '').trim();
+  if (!t) return '';
+  const raw = await groqText(TR_TRANSLATE_PROMPT + t, creds, 400);
+  return (raw ?? '').trim() || t;
 }
