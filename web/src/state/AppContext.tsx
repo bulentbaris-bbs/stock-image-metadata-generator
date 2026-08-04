@@ -12,11 +12,14 @@ import {
 
 import {
   apiTranslateKwNumbered,
-  apiTranslateToTurkish,
+  apiTranslateSecondary,
   apiTranslateUniqueKwToMap,
   applyTrMap,
   buildUniqueEnList,
 } from '../api/groq';
+import type { UILang } from '../lib/i18n';
+import { getLanguage } from '../lib/languages';
+import { deleteSharedIstockEntry, fetchSharedIstockLibrary, pushSharedIstockEntries } from '../lib/sharedIstockLibrary';
 import {
   getActiveGroqKeys,
   loadIStockMap,
@@ -79,10 +82,12 @@ interface AppActions {
   saveSettings: (s: Settings) => void;
   setIstockMap: (m: IStockMap) => void;
   saveIstockMap: (m: IStockMap) => void;
+  removeIstockEntry: (key: string) => void;
+  refreshSharedIstockLibrary: () => Promise<void>;
   setHint: (h: string) => void;
-  refreshTurkish: (fileId: string, keys: { en: KeywordKey; tr: KeywordKey }, enFull: string[]) => Promise<void>;
-  refreshTurkishTitleDescription: (fileId: string, record?: MetadataRecord | null) => Promise<void>;
-  refreshTurkishAllKeywords: (fileId: string) => Promise<void>;
+  refreshSecondaryKeywordField: (fileId: string, keys: { en: KeywordKey; secondary: KeywordKey }, enFull: string[]) => Promise<void>;
+  refreshSecondaryTitleDescription: (fileId: string, record?: MetadataRecord | null) => Promise<void>;
+  refreshSecondaryAllKeywords: (fileId: string) => Promise<void>;
   setVideoFrame: (fileId: string, seconds: number | null) => void;
   openFrameEditor: (fileId: string) => void;
   closeFrameEditor: () => void;
@@ -101,7 +106,7 @@ const AppContext = createContext<(AppState & AppActions) | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [files, setFilesState] = useState<FileEntry[]>([]);
-  const [currentFileId, setCurrentFileId] = useState<string | null>(null);
+  const [currentFileId, setCurrentFileIdState] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [metadataByFileId, setMetadataByFileId] = useState<Record<string, MetadataRecord>>(
     () => (typeof window !== 'undefined' ? loadMetadataByFileId() : {}),
@@ -122,9 +127,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const istockEnBaselineByFileIdRef = useRef<Record<string, string[]>>({});
   const [istockBaselineEpoch, setIstockBaselineEpoch] = useState(0);
 
-  useEffect(() => {
+  const setCurrentFileId = useCallback((id: string | null) => {
+    setCurrentFileIdState(id);
     setHint('');
-  }, [currentFileId]);
+  }, []);
 
   const setFiles = useCallback((f: FileEntry[]) => setFilesState(f), []);
   const toggleSelection = useCallback((id: string) => {
@@ -202,6 +208,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const saveIstockMapAction = useCallback((m: IStockMap) => {
     setIstockMapState(m);
     saveIStockMap(m);
+    // Best-effort: push the same additions to the shared library so every visitor sees them.
+    void pushSharedIstockEntries(m);
     // Retroactively re-apply the updated library to every already-generated file's
     // iStock keywords, so no manual "iStock Eşleştir" click is needed per file.
     setMetadataByFileId((prev) => {
@@ -224,6 +232,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const removeIstockEntryAction = useCallback((key: string) => {
+    setIstockMapState((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      saveIStockMap(next);
+      return next;
+    });
+    void deleteSharedIstockEntry(key);
+  }, []);
+
+  const refreshSharedIstockLibraryAction = useCallback(async () => {
+    const shared = await fetchSharedIstockLibrary();
+    if (Object.keys(shared).length === 0) return;
+    setIstockMapState((prev) => {
+      const next = { ...shared, ...prev }; // local edits not yet pushed win over the shared copy
+      saveIStockMap(next);
+      return next;
+    });
+  }, []);
+
+  // Pull the shared library once on startup, and backfill anything only present locally up to the server.
+  useEffect(() => {
+    (async () => {
+      const shared = await fetchSharedIstockLibrary();
+      setIstockMapState((prev) => {
+        const merged = { ...shared, ...prev };
+        if (Object.keys(merged).length !== Object.keys(prev).length || Object.entries(merged).some(([k, v]) => prev[k] !== v)) {
+          saveIStockMap(merged);
+        }
+        if (Object.keys(prev).length > 0) void pushSharedIstockEntries(prev);
+        return merged;
+      });
+    })();
+  }, []);
+
   const setVideoFrame = useCallback((fileId: string, seconds: number | null) => {
     setVideoFrameByFileId((prev) => {
       const next = { ...prev };
@@ -243,38 +286,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
     delete kbStopRegistryRef.current[id];
   }, []);
 
-  const refreshTurkish = useCallback(
-    async (fileId: string, keys: { en: KeywordKey; tr: KeywordKey }, enFull: string[]) => {
+  const refreshSecondaryKeywordField = useCallback(
+    async (fileId: string, keys: { en: KeywordKey; secondary: KeywordKey }, enFull: string[]) => {
       const record = metadataByFileId[fileId];
       if (!record) return;
       const groqKeys = getActiveGroqKeys(settings);
-      const geminiKey = settings.gemini_api_key?.trim();
-      if (groqKeys.length === 0 && !geminiKey) return;
+      const openRouterKey = settings.openrouter_api_key?.trim();
+      if (groqKeys.length === 0 && !openRouterKey) return;
+      const lang = getLanguage(settings.target_language);
       const enFiltered = enFull.map((s) => (s ?? '').trim()).filter(Boolean);
       if (enFiltered.length === 0) return;
-      const trFiltered = await apiTranslateKwNumbered(enFiltered, { groqKeys, geminiKey });
-      const trFull: string[] = [];
+      const secFiltered = await apiTranslateKwNumbered(enFiltered, { groqKeys, openRouterKey, lang: lang.code as UILang }, lang);
+      const secFull: string[] = [];
       let j = 0;
       for (let i = 0; i < enFull.length; i++) {
         if ((enFull[i] ?? '').trim()) {
-          trFull.push(trFiltered[j] ?? enFiltered[j] ?? '');
+          secFull.push(secFiltered[j] ?? enFiltered[j] ?? '');
           j++;
         } else {
-          trFull.push('');
+          secFull.push('');
         }
       }
-      updateMetadata(fileId, { [keys.tr]: trFull });
+      updateMetadata(fileId, { [keys.secondary]: secFull, secondary_lang: lang.code });
     },
     [metadataByFileId, updateMetadata, settings],
   );
 
-  const refreshTurkishAllKeywords = useCallback(
+  const refreshSecondaryAllKeywords = useCallback(
     async (fileId: string) => {
       const record = metadataByFileId[fileId];
       if (!record) return;
       const groqKeys = getActiveGroqKeys(settings);
-      const geminiKey = settings.gemini_api_key?.trim();
-      if (groqKeys.length === 0 && !geminiKey) return;
+      const openRouterKey = settings.openrouter_api_key?.trim();
+      if (groqKeys.length === 0 && !openRouterKey) return;
+      const lang = getLanguage(settings.target_language);
       const adobeEn = (record.adobe_keywords_en ?? []).map((k) => (k ?? '').trim()).filter(Boolean);
       const shutterEn = (record.shutter_keywords_en ?? []).map((k) => (k ?? '').trim()).filter(Boolean);
       const istockEn = (record.istock_keywords_en ?? []).map((k) => (k ?? '').trim()).filter(Boolean);
@@ -283,34 +328,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const istockEnFull = record.istock_keywords_en ?? [];
       if (adobeEn.length === 0 && shutterEn.length === 0 && istockEn.length === 0) return;
       const uniqueEn = buildUniqueEnList(adobeEnFull, shutterEnFull, istockEnFull);
-      const trMap = await apiTranslateUniqueKwToMap(uniqueEn, { groqKeys, geminiKey });
+      const secMap = await apiTranslateUniqueKwToMap(uniqueEn, { groqKeys, openRouterKey, lang: lang.code as UILang }, lang);
       updateMetadata(fileId, {
-        adobe_keywords_tr: applyTrMap(adobeEnFull, trMap),
-        shutter_keywords_tr: applyTrMap(shutterEnFull, trMap),
-        istock_keywords_tr: applyTrMap(istockEnFull, trMap),
+        adobe_keywords_secondary: applyTrMap(adobeEnFull, secMap),
+        shutter_keywords_secondary: applyTrMap(shutterEnFull, secMap),
+        istock_keywords_secondary: applyTrMap(istockEnFull, secMap),
+        secondary_lang: lang.code,
       });
     },
     [metadataByFileId, updateMetadata, settings],
   );
 
-  const refreshTurkishTitleDescription = useCallback(
+  const refreshSecondaryTitleDescription = useCallback(
     async (fileId: string, recordFromCaller?: MetadataRecord | null) => {
       const record = recordFromCaller ?? metadataByFileId[fileId];
       if (!record) return;
       const groqKeys = getActiveGroqKeys(settings);
-      const geminiKey = settings.gemini_api_key?.trim();
-      if (groqKeys.length === 0 && !geminiKey) return;
-      const creds = { groqKeys, geminiKey };
-      const patch: Partial<MetadataRecord> = {};
+      const openRouterKey = settings.openrouter_api_key?.trim();
+      if (groqKeys.length === 0 && !openRouterKey) return;
+      const lang = getLanguage(settings.target_language);
+      const creds = { groqKeys, openRouterKey, lang: lang.code as UILang };
+      const patch: Partial<MetadataRecord> = { secondary_lang: lang.code };
       if ((record.title_en ?? '').trim()) {
-        patch.title_tr = await apiTranslateToTurkish(record.title_en, creds);
+        patch.title_secondary = await apiTranslateSecondary(record.title_en, creds, lang);
       }
       if ((record.description_en ?? '').trim()) {
-        patch.description_tr = await apiTranslateToTurkish(record.description_en, creds);
+        patch.description_secondary = await apiTranslateSecondary(record.description_en, creds, lang);
       }
-      if (Object.keys(patch).length > 0) {
-        updateMetadata(fileId, patch);
-      }
+      updateMetadata(fileId, patch);
     },
     [metadataByFileId, settings, updateMetadata],
   );
@@ -324,11 +369,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setMetadata, updateMetadata, undo,
       setSettings: (s: Settings) => setSettingsState(s), saveSettings: saveSettingsAction,
       setIstockMap: (m: IStockMap) => setIstockMapState(m), saveIstockMap: saveIstockMapAction,
-      setHint, refreshTurkish, refreshTurkishTitleDescription, refreshTurkishAllKeywords,
+      removeIstockEntry: removeIstockEntryAction, refreshSharedIstockLibrary: refreshSharedIstockLibraryAction,
+      setHint, refreshSecondaryKeywordField, refreshSecondaryTitleDescription, refreshSecondaryAllKeywords,
       setVideoFrame, openFrameEditor, closeFrameEditor,
       setActiveTab, setKbZone, setKbStopIndex, registerKbStop, unregisterKbStop,
     }),
-    [files, currentFileId, selectedIds, metadataByFileId, settings, istockMap, hint, istockBaselineEpoch, videoFrameByFileId, frameEditorFileId, activeTab, kbZone, kbStopIndex, saveSettingsAction, saveIstockMapAction, refreshTurkish, refreshTurkishTitleDescription, refreshTurkishAllKeywords, undo, setVideoFrame, openFrameEditor, closeFrameEditor, registerKbStop, unregisterKbStop]
+    [files, currentFileId, selectedIds, metadataByFileId, settings, istockMap, hint, istockBaselineEpoch, videoFrameByFileId, frameEditorFileId, activeTab, kbZone, kbStopIndex, saveSettingsAction, saveIstockMapAction, removeIstockEntryAction, refreshSharedIstockLibraryAction, refreshSecondaryKeywordField, refreshSecondaryTitleDescription, refreshSecondaryAllKeywords, undo, setVideoFrame, openFrameEditor, closeFrameEditor, registerKbStop, unregisterKbStop]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

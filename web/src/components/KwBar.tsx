@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { KB_STOPS, useApp, type KbStopId } from '../state/AppContext';
 
@@ -11,15 +11,17 @@ export function KwBar({
   fillPercent,
   fillColorClass = 'bg-[#E1E6EC]',
   getCopyText,
+  labelGrow = false,
 }: {
   stopId?: KbStopId;
-  label: string;
+  label: ReactNode;
   actionLabel: string;
   countText: string;
   countClassName?: string;
   fillPercent?: number;
   fillColorClass?: string;
   getCopyText: () => string;
+  labelGrow?: boolean;
 }) {
   const { kbZone, kbStopIndex, registerKbStop, unregisterKbStop } = useApp();
   const ref = useRef<HTMLDivElement>(null);
@@ -68,7 +70,7 @@ export function KwBar({
           style={{ width: `${Math.min(100, Math.max(0, fillPercent))}%` }}
         />
       )}
-      <span className="relative z-[1] font-semibold text-text">{label}</span>
+      <span className={`relative z-[1] font-semibold text-text ${labelGrow ? 'flex-1 min-w-0' : ''}`}>{label}</span>
       <span className="relative z-[1] flex items-center gap-1 text-accent font-semibold">
         {copied ? (
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 12 9 17 20 6" /></svg>

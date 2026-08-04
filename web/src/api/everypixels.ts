@@ -1,4 +1,5 @@
 /** Everypixel Image Keywording API. May be blocked by CORS in browser; use from backend proxy if needed. */
+import { translate, type UILang } from '../lib/i18n';
 
 export interface EverypixelKeyword {
   keyword: string;
@@ -27,16 +28,26 @@ export interface EverypixelOptions {
 
 const DEFAULT_OPTIONS: EverypixelOptions = {
   num_keywords: 50,
-  threshold: 0.2,
-  colors: true,
-  num_colors: 5,
+  // 0.3 trades a little recall for precision — 0.2 let through enough low-confidence tags to be noticeable.
+  threshold: 0.3,
+  // We never read `colors` from the result — skip requesting it to save payload/latency.
+  colors: false,
   lang: 'en',
 };
 
-function everypixelErrorMessage(status: number, body: string): string {
-  if (status === 401) return 'Everypixel: Geçersiz API anahtarı (Client ID / Secret kontrol edin).';
-  if (status === 429) return 'Everypixel: Kota aşıldı. Lütfen kullanım limitinizi kontrol edin.';
-  if (status === 502) return 'Everypixel: Sunucu yoğun. İstekleri biraz yavaşlatıp tekrar deneyin.';
+/** Strip stray control/markup characters and collapse whitespace — Everypixel's vocabulary is normally clean, but defend against odd payloads anyway. */
+function sanitizeKeyword(raw: string): string {
+  return raw
+    .replace(/[<>{}[\]\\|`^~_]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function everypixelErrorMessage(status: number, body: string, uiLang: UILang): string {
+  if (status === 401) return translate('everypixel_invalid_key', uiLang);
+  if (status === 429) return translate('everypixel_quota', uiLang);
+  if (status === 502) return translate('everypixel_busy', uiLang);
   return `Everypixel: ${status} ${body.slice(0, 150)}`;
 }
 
@@ -44,7 +55,8 @@ export async function apiEverypixels(
   file: File,
   clientId: string,
   clientSecret: string,
-  options: EverypixelOptions = {}
+  options: EverypixelOptions = {},
+  uiLang: UILang = 'tr'
 ): Promise<EverypixelKeywordsResult> {
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const params = new URLSearchParams();
@@ -68,26 +80,34 @@ export async function apiEverypixels(
       body: form,
     });
   } catch {
-    throw new Error(
-      'Everypixel: İstek tarayıcıdan gönderilemedi (muhtemelen CORS engeli). Bu API doğrudan tarayıcıdan çağrılamıyor olabilir — bir backend proxy gerekebilir.'
-    );
+    throw new Error(translate('everypixel_cors', uiLang));
   }
 
   const text = await res.text();
   if (!res.ok) {
-    throw new Error(everypixelErrorMessage(res.status, text));
+    throw new Error(everypixelErrorMessage(res.status, text, uiLang));
   }
 
   let data: { keywords?: Array<{ keyword?: string; score?: number }>; colors?: Array<{ name?: string; rgb?: number[]; hex?: string; percentage?: number }>; status?: string };
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error('Everypixel: Geçersiz yanıt.');
+    throw new Error(translate('everypixel_invalid_response', uiLang));
   }
 
+  const seen = new Set<string>();
   const keywords: EverypixelKeyword[] = (data?.keywords ?? [])
-    .map((k) => ({ keyword: k.keyword ?? '', score: typeof k.score === 'number' ? k.score : 0 }))
-    .filter((k) => k.keyword.trim() !== '');
+    .map((k) => ({ keyword: sanitizeKeyword(k.keyword ?? ''), score: typeof k.score === 'number' ? k.score : 0 }))
+    .filter((k) => {
+      if (!k.keyword) return false;
+      const lower = k.keyword.toLowerCase();
+      if (seen.has(lower)) return false;
+      seen.add(lower);
+      return true;
+    })
+    // The API documents descending score order, but we sort explicitly rather than trust that — the app
+    // relies on this order to place the highest-relevance terms first across all three platforms.
+    .sort((a, b) => b.score - a.score);
 
   const colors: EverypixelColor[] | undefined = data?.colors?.length
     ? (data.colors ?? []).map((c) => ({
@@ -101,7 +121,7 @@ export async function apiEverypixels(
   return { keywords, colors };
 }
 
-/** Returns keyword strings in Everypixel's order (score-based). No reordering; colors are not added so platform lists keep API relevance order. */
+/** Keyword strings already sorted by score (highest first) and deduped/sanitized in apiEverypixels. */
 export function everypixelToKeywordStrings(result: EverypixelKeywordsResult): string[] {
   return result.keywords.map((k) => k.keyword.trim()).filter(Boolean);
 }

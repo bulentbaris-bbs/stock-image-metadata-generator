@@ -1,3 +1,4 @@
+import { DEFAULT_SECONDARY_LANG } from './languages';
 import type { IStockMap, MetadataRecord, Settings } from '../types';
 
 export const MAX_GROQ_KEYS = 4;
@@ -5,7 +6,8 @@ const DEFAULT_SETTINGS: Settings = {
   groq_api_keys: [],
   everypixels_id: '',
   everypixels_secret: '',
-  gemini_api_key: '',
+  openrouter_api_key: '',
+  target_language: DEFAULT_SECONDARY_LANG,
 };
 const SETTINGS_KEY = 'stock_metadata_settings';
 const ISTOCK_KEY = 'stock_metadata_istock';
@@ -89,13 +91,14 @@ export function saveVideoFrameMap(map: Record<string, number>): void {
   localStorage.setItem(VIDEO_FRAME_KEY, JSON.stringify(map));
 }
 
-export function emptyRecord(fileName: string): MetadataRecord {
+export function emptyRecord(fileName: string, secondaryLang: string = DEFAULT_SECONDARY_LANG): MetadataRecord {
   return {
     file_name: fileName,
     created_at: new Date().toISOString().slice(0, 16).replace('T', ' '),
-    title_en: '', title_tr: '', description_en: '', description_tr: '',
-    adobe_keywords_en: [], adobe_keywords_tr: [],
-    shutter_keywords_en: [], shutter_keywords_tr: [],
-    istock_keywords_en: [], istock_keywords_tr: [],
+    secondary_lang: secondaryLang,
+    title_en: '', title_secondary: '', description_en: '', description_secondary: '',
+    adobe_keywords_en: [], adobe_keywords_secondary: [],
+    shutter_keywords_en: [], shutter_keywords_secondary: [],
+    istock_keywords_en: [], istock_keywords_secondary: [],
   };
 }

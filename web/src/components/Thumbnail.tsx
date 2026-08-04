@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { useT } from '../lib/useT';
 import { fileFormatLabel, formatFileSize, getThumbnailUrl, isVideo, THUMB_H, THUMB_W } from '../lib/media';
 import type { RingStatus } from '../lib/limits';
 import { enqueueThumbnail } from '../lib/thumbnailQueue';
@@ -44,6 +45,7 @@ export function Thumbnail({
   onToggleBatch: () => void;
 }) {
   const { videoFrameByFileId, openFrameEditor, kbZone } = useApp();
+  const t = useT();
   const frameOverride = videoFrameByFileId[entry.id];
   const [url, setUrl] = useState<string | null>(null);
   const [isInView, setIsInView] = useState(false);
@@ -107,6 +109,7 @@ export function Thumbnail({
       >
         <div
           className={`relative rounded-lg overflow-hidden bg-gradient-to-br from-[#DCE3EA] to-[#C7D0DA] flex items-center justify-center text-[#8B96A3] shrink-0 ${collapsed ? 'w-full aspect-square' : 'w-[38px] h-[38px]'}`}
+          onDoubleClick={video ? (e) => { e.stopPropagation(); openFrameEditor(entry.id); } : undefined}
         >
           {url ? (
             <img src={url} alt="" className="w-full h-full object-cover" />
@@ -125,7 +128,7 @@ export function Thumbnail({
           )}
           <button
             type="button"
-            aria-label={selectedForBatch ? 'Seçimi kaldır' : 'Toplu işleme için seç'}
+            aria-label={selectedForBatch ? t('batch_select_remove') : t('batch_select_add')}
             onClick={(e) => { e.stopPropagation(); onToggleBatch(); }}
             className="btn-press absolute -top-1 -left-1 z-10 rounded-full border border-border bg-card w-4 h-4 flex items-center justify-center text-text2 shadow"
           >
@@ -134,12 +137,12 @@ export function Thumbnail({
           {video && !collapsed && (
             <button
               type="button"
-              aria-label="Analiz karesini seç"
-              title={frameOverride != null ? 'Kare seçildi — değiştirmek için tıklayın' : 'Analiz karesini seç'}
+              aria-label={t('frame_pick_title')}
+              title={frameOverride != null ? t('frame_pick_selected_title') : t('frame_pick_hint')}
               onClick={(e) => { e.stopPropagation(); openFrameEditor(entry.id); }}
-              className={`btn-press absolute -top-1 -right-1 z-10 rounded-full border border-border bg-card w-4 h-4 flex items-center justify-center shadow ${frameOverride != null ? 'text-accent' : 'text-text2'}`}
+              className={`btn-press absolute -top-1.5 -right-1.5 z-10 rounded-full border border-border bg-card w-5 h-5 flex items-center justify-center shadow before:absolute before:-inset-2 before:content-[''] ${frameOverride != null ? 'text-accent' : 'text-text2'}`}
             >
-              <span style={{ fontSize: 7 }}>▶</span>
+              <span style={{ fontSize: 8 }}>▶</span>
             </button>
           )}
         </div>

@@ -6,11 +6,13 @@ export function EditableText({
   onChange,
   multiline,
   placeholder,
+  small,
 }: {
   value: string;
   onChange: (v: string) => void;
   multiline?: boolean;
   placeholder?: string;
+  small?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -25,7 +27,7 @@ export function EditableText({
     });
   };
 
-  const className = `w-full border-0 outline-none bg-transparent text-text text-[13.5px] ${multiline ? 'leading-[1.5] resize-none h-16' : ''} ${editing ? 'cursor-text' : 'cursor-default'}`;
+  const className = `w-full border-0 outline-none bg-transparent text-text ${small ? 'text-[12.5px]' : 'text-[13.5px]'} ${multiline ? `leading-[1.4] resize-none ${small ? 'h-9' : 'h-11'}` : ''} ${editing ? 'cursor-text' : 'cursor-default'}`;
 
   if (multiline) {
     return (

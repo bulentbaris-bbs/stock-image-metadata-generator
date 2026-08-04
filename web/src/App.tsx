@@ -20,6 +20,9 @@ import { SettingsModal } from './components/SettingsModal';
 import { Sidebar } from './components/Sidebar';
 import { Toolbar } from './components/Toolbar';
 import { VideoFramePickerModal } from './components/VideoFramePickerModal';
+import type { UILang } from './lib/i18n';
+import { useT } from './lib/useT';
+import { getLanguage } from './lib/languages';
 import { ADOBE_MAX, ISTOCK_MAX, SHUTTER_MAX } from './lib/limits';
 import { base64JpegToFile, fileToBase64Jpeg, isVideo } from './lib/media';
 import { emptyRecord, getActiveGroqKeys } from './lib/storage';
@@ -33,17 +36,20 @@ function AppContent() {
     files, currentFileId, setCurrentFileId, selectedIds, metadataByFileId, setMetadata, updateMetadata, undo, settings, hint, istockMap, videoFrameByFileId,
     kbZone, kbStopIndex, setKbZone, setKbStopIndex, activeTab, setActiveTab, kbStopRegistryRef,
   } = useApp();
+  const t = useT();
   const [generating, setGenerating] = useState(false);
   const [generatingProgress, setGeneratingProgress] = useState<{ current: number; total: number } | null>(null);
   const [refreshingTitle, setRefreshingTitle] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [iStockOpen, setIStockOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [fileSearch, setFileSearch] = useState('');
   const currentEntry = files.find((f) => f.id === currentFileId);
 
   useEffect(() => {
-    if (currentFileId && currentEntry && !metadataByFileId[currentFileId]) setMetadata(currentFileId, emptyRecord(currentEntry.name));
-  }, [currentFileId, currentEntry, metadataByFileId, setMetadata]);
+    if (currentFileId && currentEntry && !metadataByFileId[currentFileId]) setMetadata(currentFileId, emptyRecord(currentEntry.name, settings.target_language));
+  }, [currentFileId, currentEntry, metadataByFileId, setMetadata, settings.target_language]);
 
   // Two-zone keyboard navigation (mirrors the design mockup's kbZone/KB_STOPS system).
   // 'sidebar' zone: ↑/↓ move file selection, → enters 'content' zone.
@@ -71,7 +77,7 @@ function AppContent() {
       if (kbZone === 'sidebar') {
         if (isCopy && currentFileId) {
           const record = metadataByFileId[currentFileId];
-          const hasMeta = record && (record.title_en || record.title_tr || (record.adobe_keywords_en?.length ?? 0) > 0);
+          const hasMeta = record && (record.title_en || record.title_secondary || (record.adobe_keywords_en?.length ?? 0) > 0);
           if (hasMeta) {
             e.preventDefault();
             navigator.clipboard.writeText(JSON.stringify(record));
@@ -154,12 +160,13 @@ function AppContent() {
 
   const handleGenerate = useCallback(async () => {
     const groqKeys = getActiveGroqKeys(settings);
-    const geminiKey = settings.gemini_api_key?.trim();
-    const creds = { groqKeys, geminiKey };
-    if (groqKeys.length === 0 && !geminiKey) { setError('Ayarlar\'dan en az bir Groq API key (veya Gemini yedek key) girin.'); return; }
+    const openRouterKey = settings.openrouter_api_key?.trim();
+    const lang = getLanguage(settings.target_language);
+    const creds = { groqKeys, openRouterKey, lang: lang.code as UILang };
+    if (groqKeys.length === 0 && !openRouterKey) { setError(t('err_need_key')); return; }
     const orderedEntries = files.filter((f) => selectedIds.has(f.id));
     const toProcess = orderedEntries.length > 0 ? orderedEntries : (currentEntry ? [currentEntry] : []);
-    if (toProcess.length === 0) { setError('En az bir dosya seçin veya listeden bir dosyaya tıklayın.'); return; }
+    if (toProcess.length === 0) { setError(t('err_need_file')); return; }
     setError(null);
     setGenerating(true);
     setGeneratingProgress(toProcess.length > 1 ? { current: 0, total: toProcess.length } : null);
@@ -180,17 +187,16 @@ function AppContent() {
           istockEn: mapIstock(groqKw.slice(0, ISTOCK_MAX)),
         });
 
-        let meta: { title_en: string; title_tr: string; description_en: string; description_tr: string };
+        let meta: { title_en: string; title_secondary: string; description_en: string; description_secondary: string };
         let adobeEn: string[];
         let shutterEn: string[];
         let istockEn: string[];
 
         if (epId && epSecret) {
-          meta = await apiMetadata(b64, creds, hintText);
           const getEnKeywords = async (): Promise<{ adobeEn: string[]; shutterEn: string[]; istockEn: string[] }> => {
             try {
               const fileForEp = isVideo(entry.file) ? base64JpegToFile(b64, 'frame.jpg') : entry.file;
-              const epResult = await apiEverypixels(fileForEp, epId, epSecret);
+              const epResult = await apiEverypixels(fileForEp, epId, epSecret, {}, lang.code as UILang);
               const allKw = everypixelToKeywordStrings(epResult);
               let aEn = allKw.slice(0, ADOBE_MAX);
               let sEn = allKw.slice(0, SHUTTER_MAX);
@@ -205,37 +211,41 @@ function AppContent() {
               return { adobeEn: aEn, shutterEn: sEn, istockEn: iEn };
             } catch (epError) {
               everypixelWarnings.push(
-                `${entry.name}: ${epError instanceof Error ? epError.message : 'Everypixel isteği başarısız oldu.'}`
+                `${entry.name}: ${epError instanceof Error ? epError.message : t('err_everypixel_request_failed')}`
               );
               return fromGroqList(await apiKeywordsAllPlatforms(b64, creds, hintText));
             }
           };
-          ({ adobeEn, shutterEn, istockEn } = await getEnKeywords());
+          // Metadata (title/description) and keywords don't depend on each other — running them
+          // together instead of one-after-the-other is a large chunk of "Üret" wall-clock time back.
+          [meta, { adobeEn, shutterEn, istockEn }] = await Promise.all([
+            apiMetadata(b64, creds, hintText, lang),
+            getEnKeywords(),
+          ]);
         } else {
-          const combined = await apiMetadataWithKeywords(b64, creds, hintText);
+          const combined = await apiMetadataWithKeywords(b64, creds, hintText, lang);
           meta = combined;
           ({ adobeEn, shutterEn, istockEn } = fromGroqList(combined.keywords));
         }
         const uniqueEn = buildUniqueEnList(adobeEn, shutterEn, istockEn);
-        const trMap = await apiTranslateUniqueKwToMap(uniqueEn, creds);
-        const adobeTr = applyTrMap(adobeEn, trMap);
-        const shutterTr = applyTrMap(shutterEn, trMap);
-        const istockTr = applyTrMap(istockEn, trMap);
+        const secMap = await apiTranslateUniqueKwToMap(uniqueEn, creds, lang);
+        const adobeSecondary = applyTrMap(adobeEn, secMap);
+        const shutterSecondary = applyTrMap(shutterEn, secMap);
+        const istockSecondary = applyTrMap(istockEn, secMap);
         const record: MetadataRecord = {
           file_name: entry.name,
           created_at: new Date().toISOString().slice(0, 16).replace('T', ' '),
-          title_en: meta.title_en ?? '', title_tr: meta.title_tr ?? '',
-          description_en: meta.description_en ?? '', description_tr: meta.description_tr ?? '',
-          adobe_keywords_en: adobeEn, adobe_keywords_tr: adobeTr,
-          shutter_keywords_en: shutterEn, shutter_keywords_tr: shutterTr,
-          istock_keywords_en: istockEn, istock_keywords_tr: istockTr,
+          secondary_lang: lang.code,
+          title_en: meta.title_en ?? '', title_secondary: meta.title_secondary ?? '',
+          description_en: meta.description_en ?? '', description_secondary: meta.description_secondary ?? '',
+          adobe_keywords_en: adobeEn, adobe_keywords_secondary: adobeSecondary,
+          shutter_keywords_en: shutterEn, shutter_keywords_secondary: shutterSecondary,
+          istock_keywords_en: istockEn, istock_keywords_secondary: istockSecondary,
         };
         setMetadata(entry.id, record);
       }
       if (everypixelWarnings.length > 0) {
-        setError(
-          `Everypixel ${everypixelWarnings.length} dosyada çalışmadı, Groq'a düşüldü (anahtar kelimeler yine üretildi). İlk hata: ${everypixelWarnings[0]}`
-        );
+        setError(t('everypixel_warning', { n: everypixelWarnings.length, msg: everypixelWarnings[0] }));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Generation failed');
@@ -243,29 +253,34 @@ function AppContent() {
       setGenerating(false);
       setGeneratingProgress(null);
     }
-  }, [files, selectedIds, currentEntry, settings, hint, mapIstock, setMetadata, setCurrentFileId, videoFrameByFileId]);
+  }, [files, selectedIds, currentEntry, settings, hint, mapIstock, setMetadata, setCurrentFileId, videoFrameByFileId, t]);
 
   const handleRefreshTitleOnly = useCallback(async () => {
     const groqKeys = getActiveGroqKeys(settings);
-    const geminiKey = settings.gemini_api_key?.trim();
-    if (groqKeys.length === 0 && !geminiKey) { setError('Ayarlar\'dan en az bir Groq API key (veya Gemini yedek key) girin.'); return; }
-    if (!currentEntry) { setError('Önce bir dosya seçin.'); return; }
+    const openRouterKey = settings.openrouter_api_key?.trim();
+    if (groqKeys.length === 0 && !openRouterKey) { setError(t('err_need_key')); return; }
+    if (!currentEntry) { setError(t('err_select_file_first')); return; }
     setError(null);
     setRefreshingTitle(true);
     try {
       const b64 = await fileToBase64Jpeg(currentEntry.file, videoFrameByFileId[currentEntry.id]);
-      const meta = await apiMetadata(b64, { groqKeys, geminiKey }, hint.trim());
-      updateMetadata(currentEntry.id, { title_en: meta.title_en ?? '', title_tr: meta.title_tr ?? '' });
+      const lang = getLanguage(settings.target_language);
+      const meta = await apiMetadata(b64, { groqKeys, openRouterKey, lang: lang.code as UILang }, hint.trim(), lang);
+      updateMetadata(currentEntry.id, { title_en: meta.title_en ?? '', title_secondary: meta.title_secondary ?? '' });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Başlık yenilenemedi.');
+      setError(e instanceof Error ? e.message : t('err_title_refresh_failed'));
     } finally {
       setRefreshingTitle(false);
     }
-  }, [settings, currentEntry, hint, videoFrameByFileId, updateMetadata]);
+  }, [settings, currentEntry, hint, videoFrameByFileId, updateMetadata, t]);
 
   return (
     <div className="h-screen flex flex-col bg-bg text-text">
       <Toolbar
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed((c) => !c)}
+        search={fileSearch}
+        onSearchChange={setFileSearch}
         onGenerate={handleGenerate}
         generating={generating}
         generatingProgress={generatingProgress}
@@ -276,19 +291,14 @@ function AppContent() {
       />
       {error && <div className="px-[22px] py-2 bg-redBg text-red text-[13px] border-b border-borderSoft">{error}</div>}
       <div className="flex-1 flex min-h-0">
-        <Sidebar />
+        <Sidebar collapsed={sidebarCollapsed} search={fileSearch} />
         <main className="flex-1 flex flex-col min-w-0 min-h-0 bg-card">
           <MainForm onError={setError} />
-          <div className="px-[22px] py-2 border-t border-borderSoft flex justify-end shrink-0">
-            <span className="flex items-center gap-3.5 text-[11px] text-text3">
-              <kbd className="border border-border rounded px-1 bg-bgSidebar font-sans">↑</kbd>
-              <kbd className="border border-border rounded px-1 bg-bgSidebar font-sans">↓</kbd> gezin ·
-              <kbd className="border border-border rounded px-1 bg-bgSidebar font-sans">→</kbd> alanlara geç · sekmede
-              <kbd className="border border-border rounded px-1 bg-bgSidebar font-sans">←</kbd>
-              <kbd className="border border-border rounded px-1 bg-bgSidebar font-sans">→</kbd> platform değiştir ·
-              <kbd className="border border-border rounded px-1 bg-bgSidebar font-sans">⌘C</kbd> kopyala
+          <footer className="shrink-0 px-[22px] py-2 border-t border-borderSoft flex justify-end">
+            <span className="text-[11px] text-text3">
+              <kbd>↑</kbd><kbd>↓</kbd> {t('shortcut_nav')} · <kbd>→</kbd> {t('shortcut_go_to_fields')} · {t('shortcut_in_tab')} <kbd>←</kbd><kbd>→</kbd> {t('shortcut_change_platform')} · <kbd>⌘C</kbd> {t('shortcut_copy')}
             </span>
-          </div>
+          </footer>
         </main>
       </div>
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />

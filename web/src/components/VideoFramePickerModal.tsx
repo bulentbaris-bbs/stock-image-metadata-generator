@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { useT } from '../lib/useT';
 import { useApp } from '../state/AppContext';
 
 function formatTime(s: number): string {
@@ -11,6 +12,7 @@ function formatTime(s: number): string {
 
 export function VideoFramePickerModal() {
   const { files, videoFrameByFileId, frameEditorFileId, closeFrameEditor, setVideoFrame } = useApp();
+  const t = useT();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [duration, setDuration] = useState(0);
   const [current, setCurrent] = useState(0);
@@ -58,7 +60,7 @@ export function VideoFramePickerModal() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={closeFrameEditor}>
       <div className="bg-card rounded-xl border border-border p-6 w-[640px] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-text font-bold text-lg mb-1">Analiz karesini seç</h2>
+        <h2 className="text-text font-bold text-lg mb-1">{t('frame_pick_title')}</h2>
         <p className="text-text3 text-xs mb-3 truncate">{entry.name}</p>
         <div className="rounded-lg overflow-hidden bg-black flex items-center justify-center" style={{ maxHeight: 360 }}>
           <video
@@ -89,9 +91,9 @@ export function VideoFramePickerModal() {
           <span className="text-text3 text-xs w-10 shrink-0 text-right">{formatTime(duration)}</span>
         </div>
         <div className="flex items-center gap-2 mt-4">
-          <button type="button" onClick={handleUseFrame} className="btn-press flex-1 h-9 rounded-lg bg-accent hover:bg-accentH text-white font-semibold text-sm">✓ Bu kareyi kullan</button>
-          <button type="button" onClick={handleReset} className="btn-press h-9 px-4 rounded-lg bg-card2 hover:bg-hover text-text2 text-sm">Ortadan başlasın</button>
-          <button type="button" onClick={closeFrameEditor} className="btn-press h-9 px-4 rounded-lg bg-card2 hover:bg-hover text-text2 text-sm">İptal</button>
+          <button type="button" onClick={handleUseFrame} className="btn-press flex-1 h-9 rounded-lg bg-accent hover:bg-accentH text-white font-semibold text-sm">{t('video_frame_use_btn')}</button>
+          <button type="button" onClick={handleReset} className="btn-press h-9 px-4 rounded-lg bg-card2 hover:bg-hover text-text2 text-sm">{t('video_frame_reset_btn')}</button>
+          <button type="button" onClick={closeFrameEditor} className="btn-press h-9 px-4 rounded-lg bg-card2 hover:bg-hover text-text2 text-sm">{t('video_frame_cancel_btn')}</button>
         </div>
       </div>
     </div>

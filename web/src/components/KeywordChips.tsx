@@ -1,57 +1,99 @@
 import { useRef, useState } from 'react';
 
+import { apiTranslateToEnglish } from '../api/groq';
+import type { UILang } from '../lib/i18n';
+import { getLanguage } from '../lib/languages';
+import { getActiveGroqKeys } from '../lib/storage';
+import { useT } from '../lib/useT';
+import { useApp, type TabId } from '../state/AppContext';
 import type { KeywordKey, MetadataRecord } from '../types';
 import { KwBar } from './KwBar';
+
+function EditableSpan({
+  value,
+  onCommit,
+  className,
+  syncedClassName,
+}: {
+  value: string;
+  onCommit: (v: string) => void;
+  className: string;
+  syncedClassName: string;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const originalRef = useRef(value);
+  const [synced, setSynced] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  return (
+    <span
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      spellCheck={false}
+      className={synced ? syncedClassName : className}
+      onFocus={() => { originalRef.current = ref.current?.textContent ?? ''; }}
+      onBlur={() => {
+        const next = (ref.current?.textContent ?? '').trim();
+        if (next && next !== originalRef.current.trim()) {
+          onCommit(next);
+          setSynced(true);
+          if (timerRef.current) clearTimeout(timerRef.current);
+          timerRef.current = setTimeout(() => setSynced(false), 1200);
+        } else if (!next) {
+          if (ref.current) ref.current.textContent = originalRef.current;
+        }
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          ref.current?.blur();
+        }
+      }}
+    >
+      {value}
+    </span>
+  );
+}
 
 function Chip({
   index,
   en,
   tr,
+  onCommitEn,
   onCommitTr,
   onRemove,
+  translating,
 }: {
   index: number;
   en: string;
   tr: string;
+  onCommitEn: (v: string) => void;
   onCommitTr: (v: string) => void;
   onRemove: () => void;
+  translating?: boolean;
 }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const originalRef = useRef(tr);
-  const [synced, setSynced] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const t = useT();
 
   return (
-    <span className={`flex items-center gap-1.5 rounded-[7px] border pl-2.5 pr-1.5 py-1.5 text-[12px] transition-colors ${synced ? 'border-green bg-greenBg' : 'border-borderSoft bg-chip'}`}>
+    <span className="flex items-center gap-1.5 rounded-[7px] border border-borderSoft bg-chip pl-2.5 pr-1.5 py-1.5 text-[12px] transition-colors">
       <span className="text-text3 text-[10.5px]">{index + 1}</span>
-      <span className={`font-medium ${synced ? 'text-green' : 'text-text'}`}>{en}</span>
-      <span className="text-text3">·</span>
-      <span
-        ref={ref}
-        contentEditable
-        suppressContentEditableWarning
-        spellCheck={false}
-        className={`outline-none cursor-text border-b border-dashed px-px ${synced ? 'text-green border-transparent' : 'text-text2 border-transparent hover:border-border focus:text-text focus:border-accent'}`}
-        onFocus={() => { originalRef.current = ref.current?.textContent ?? ''; }}
-        onBlur={() => {
-          const next = (ref.current?.textContent ?? '').trim();
-          if (next !== originalRef.current.trim()) {
-            onCommitTr(next);
-            setSynced(true);
-            if (timerRef.current) clearTimeout(timerRef.current);
-            timerRef.current = setTimeout(() => setSynced(false), 1200);
-          }
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            ref.current?.blur();
-          }
-        }}
-      >
-        {tr}
+      <span className={translating ? 'opacity-40 transition-opacity' : 'transition-opacity'}>
+        <EditableSpan
+          value={en}
+          onCommit={onCommitEn}
+          className="font-medium text-text outline-none cursor-text border-b border-dashed border-transparent hover:border-border focus:border-accent px-px"
+          syncedClassName="font-medium text-green outline-none cursor-text border-b border-dashed border-transparent px-px"
+        />
       </span>
-      <button type="button" onClick={onRemove} aria-label="Kaldır" className="btn-press text-text3 hover:text-red shrink-0">
+      <span className="text-text3">·</span>
+      <EditableSpan
+        value={tr}
+        onCommit={onCommitTr}
+        className="outline-none cursor-text border-b border-dashed px-px text-text2 border-transparent hover:border-border focus:text-text focus:border-accent"
+        syncedClassName="outline-none cursor-text border-b border-dashed px-px text-green border-transparent"
+      />
+      <button type="button" onClick={onRemove} aria-label={t('remove_kw_aria')} className="btn-press text-text3 hover:text-red shrink-0">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
       </button>
     </span>
@@ -63,28 +105,66 @@ export function KeywordChips({
   maxKw,
   record,
   onUpdateEn,
-  onUpdateTr,
+  onUpdateSecondary,
   filter,
+  onFilterChange,
+  platform,
 }: {
-  keys: { en: KeywordKey; tr: KeywordKey };
+  keys: { en: KeywordKey; secondary: KeywordKey };
   maxKw: number;
   record: MetadataRecord;
   onUpdateEn: (kw: string[]) => void;
-  onUpdateTr: (kw: string[]) => void;
+  onUpdateSecondary: (kw: string[]) => void;
   filter: string;
+  onFilterChange: (v: string) => void;
+  platform: TabId;
 }) {
+  const t = useT();
+  const { istockMap, settings } = useApp();
+  const [newKw, setNewKw] = useState('');
+  const [translatingIdx, setTranslatingIdx] = useState<number | null>(null);
   const enList = ((record[keys.en] as string[]) ?? []).filter(Boolean);
-  const trList = (record[keys.tr] as string[]) ?? [];
+  const trList = (record[keys.secondary] as string[]) ?? [];
 
   const removeAt = (i: number) => {
     onUpdateEn(enList.filter((_, j) => j !== i));
-    onUpdateTr(trList.filter((_, j) => j !== i));
+    onUpdateSecondary(trList.filter((_, j) => j !== i));
   };
   const setTrAt = (i: number, v: string) => {
     const next = [...trList];
     while (next.length <= i) next.push('');
     next[i] = v;
-    onUpdateTr(next);
+    onUpdateSecondary(next);
+    // A manual correction to the secondary-language keyword must also correct the English source term.
+    const groqKeys = getActiveGroqKeys(settings);
+    const openRouterKey = settings.openrouter_api_key?.trim();
+    if (groqKeys.length === 0 && !openRouterKey) return;
+    const lang = getLanguage(record.secondary_lang ?? settings.target_language);
+    setTranslatingIdx(i);
+    apiTranslateToEnglish(v, { groqKeys, openRouterKey, lang: lang.code as UILang }, lang)
+      .then((newEn) => {
+        const cleaned = newEn.trim();
+        if (cleaned) setEnAt(i, cleaned);
+      })
+      .catch(() => {
+        // ignore translation errors; the secondary-language edit is already saved
+      })
+      .finally(() => setTranslatingIdx((cur) => (cur === i ? null : cur)));
+  };
+  const setEnAt = (i: number, v: string) => {
+    const next = [...enList];
+    next[i] = v;
+    onUpdateEn(next);
+  };
+
+  const addKeyword = () => {
+    const raw = newKw.trim();
+    if (!raw || enList.length >= maxKw) return;
+    const en = platform === 'istock' ? (istockMap[raw.toLowerCase()] ?? raw) : raw;
+    if (enList.some((k) => k.toLowerCase() === en.toLowerCase())) { setNewKw(''); return; }
+    onUpdateEn([...enList, en]);
+    onUpdateSecondary([...trList, '']);
+    setNewKw('');
   };
 
   const filterLower = filter.trim().toLowerCase();
@@ -100,8 +180,19 @@ export function KeywordChips({
     <div className="border border-borderSoft rounded-xl overflow-hidden bg-card">
       <KwBar
         stopId="keywords"
-        label="Anahtar kelimeler"
-        actionLabel="Tümünü kopyala"
+        label={
+          <input
+            type="text"
+            value={filter}
+            onChange={(e) => onFilterChange(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+            placeholder={t('keyword_search_placeholder')}
+            className="w-[210px] bg-transparent border-0 outline-none text-text text-[12.5px] placeholder-text3 font-normal"
+          />
+        }
+        actionLabel={t('copy_all_action')}
         countText={`${enList.length}/${maxKw}`}
         countClassName={enList.length >= maxKw ? 'text-green' : 'text-text2'}
         fillPercent={(enList.length / maxKw) * 100}
@@ -110,16 +201,28 @@ export function KeywordChips({
       />
       <div className="p-3.5 flex flex-wrap gap-1.5">
         {visible.map(({ en, tr, i }) => (
-          <Chip key={i} index={i} en={en} tr={tr} onCommitTr={(v) => setTrAt(i, v)} onRemove={() => removeAt(i)} />
+          <Chip key={i} index={i} en={en} tr={tr} onCommitEn={(v) => setEnAt(i, v)} onCommitTr={(v) => setTrAt(i, v)} onRemove={() => removeAt(i)} translating={translatingIdx === i} />
         ))}
-        {missing > 0 && !filterLower && (
-          <span className="flex items-center gap-1.5 rounded-[7px] border border-dashed border-border text-text3 px-2.5 py-1.5 text-[12px]">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-            {missing} kelime eksik
+        {enList.length < maxKw && !filterLower && (
+          <span className="flex items-center gap-1 rounded-[7px] border border-dashed border-border px-2 py-1 text-[12px]">
+            <input
+              type="text"
+              value={newKw}
+              onChange={(e) => setNewKw(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addKeyword(); } }}
+              placeholder={t('add_keyword_placeholder')}
+              className="w-[110px] bg-transparent border-0 outline-none text-text placeholder-text3"
+            />
+            <button type="button" onClick={addKeyword} aria-label={t('add_keyword_placeholder')} className="btn-press text-accent shrink-0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+            </button>
           </span>
         )}
+        {missing > 0 && !filterLower && (
+          <span className="flex items-center text-text3 px-1 py-1.5 text-[12px]">{t('missing_keywords', { n: missing })}</span>
+        )}
         {visible.length === 0 && enList.length > 0 && (
-          <span className="text-text3 text-[12px] py-1.5">Filtreyle eşleşen anahtar kelime yok.</span>
+          <span className="text-text3 text-[12px] py-1.5">{t('no_filter_match')}</span>
         )}
       </div>
     </div>

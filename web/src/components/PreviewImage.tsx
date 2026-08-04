@@ -29,15 +29,17 @@ export function PreviewImage({ entry }: { entry: FileEntry }) {
   }, [entry.id, entry.file, frameOverride]);
 
   return (
-    <div className="shrink-0 w-[180px]">
-      <div className="w-[180px] h-[130px] rounded-2xl overflow-hidden bg-gradient-to-br from-[#E4E9EE] to-[#CBD5DF] border border-borderSoft flex items-center justify-center text-[#93A0AC]">
+    <div className="shrink-0 w-[180px] h-full">
+      <div className="relative w-full h-full rounded-2xl overflow-hidden bg-gradient-to-br from-[#E4E9EE] to-[#CBD5DF] border border-borderSoft flex items-center justify-center text-[#93A0AC]">
         {url ? (
           <img src={url} alt="" className="w-full h-full object-cover" />
         ) : (
           <span className="text-2xl" aria-hidden>{isVideo(entry.file) ? '🎬' : '🖼'}</span>
         )}
+        <div className="absolute inset-x-0 bottom-0 bg-black/55 backdrop-blur-[1px] px-2 py-1">
+          <p className="text-[10.5px] text-white/95 truncate leading-tight">{entry.name}</p>
+        </div>
       </div>
-      <p className="text-[11px] text-text3 mt-1.5 text-center truncate">{entry.name}</p>
     </div>
   );
 }

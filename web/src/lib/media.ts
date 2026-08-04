@@ -40,6 +40,17 @@ export function isAllowedMedia(file: File): boolean {
   return ALLOWED_EXTENSIONS.includes(ext);
 }
 
+/** Filter to allowed media types and sort by name — shared by the folder picker and drag-drop. */
+export function sortedAllowedFiles(input: FileList | File[]): File[] {
+  const list: File[] = [];
+  for (let i = 0; i < input.length; i++) {
+    const f = input[i];
+    if (isAllowedMedia(f)) list.push(f);
+  }
+  list.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+  return list;
+}
+
 /** Resize so the short side is API_IMAGE_SHORT_SIDE_PX, return base64 JPEG for API. */
 function resizeToShortSide(w: number, h: number): { w: number; h: number } {
   const short = Math.min(w, h);
