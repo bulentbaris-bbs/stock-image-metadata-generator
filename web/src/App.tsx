@@ -29,7 +29,7 @@ import { ADOBE_MAX, ISTOCK_MAX, SHUTTER_MAX } from './lib/limits';
 import { base64JpegToFile, fileToBase64Jpeg, isVideo } from './lib/media';
 import { emptyRecord, getActiveGroqKeys } from './lib/storage';
 import { AppProvider, KB_STOPS, useApp, type TabId } from './state/AppContext';
-import type { MetadataRecord } from './types';
+import type { FileEntry, MetadataRecord } from './types';
 
 const TAB_ORDER: TabId[] = ['adobe', 'shutterstock', 'istock'];
 
@@ -177,6 +177,13 @@ function AppContent() {
     setGenerating(true);
     setGeneratingProgress(toProcess.length > 1 ? { current: 0, total: toProcess.length } : null);
     const everypixelWarnings: string[] = [];
+    const processedEntries: Array<{
+      entry: FileEntry;
+      meta: { title_en: string; title_secondary: string; description_en: string; description_secondary: string };
+      adobeEn: string[];
+      shutterEn: string[];
+      istockEn: string[];
+    }> = [];
     try {
       const hintText = hint.trim();
       for (let i = 0; i < toProcess.length; i++) {
@@ -233,22 +240,21 @@ function AppContent() {
           meta = combined;
           ({ adobeEn, shutterEn, istockEn } = fromGroqList(combined.keywords));
         }
-        const uniqueEn = buildUniqueEnList(adobeEn, shutterEn, istockEn);
-        const secMap = await apiTranslateUniqueKwToMap(uniqueEn, metaCreds, lang);
-        const adobeSecondary = applyTrMap(adobeEn, secMap);
-        const shutterSecondary = applyTrMap(shutterEn, secMap);
-        const istockSecondary = applyTrMap(istockEn, secMap);
+        // English fields land immediately; secondary-language fields are filled in the background below
+        // so the user isn't stuck watching a spinner for translation on top of generation.
         const record: MetadataRecord = {
           file_name: entry.name,
           created_at: new Date().toISOString().slice(0, 16).replace('T', ' '),
           secondary_lang: lang.code,
-          title_en: meta.title_en ?? '', title_secondary: meta.title_secondary ?? '',
-          description_en: meta.description_en ?? '', description_secondary: meta.description_secondary ?? '',
-          adobe_keywords_en: adobeEn, adobe_keywords_secondary: adobeSecondary,
-          shutter_keywords_en: shutterEn, shutter_keywords_secondary: shutterSecondary,
-          istock_keywords_en: istockEn, istock_keywords_secondary: istockSecondary,
+          title_en: meta.title_en ?? '', title_secondary: '',
+          description_en: meta.description_en ?? '', description_secondary: '',
+          adobe_keywords_en: adobeEn, adobe_keywords_secondary: [],
+          shutter_keywords_en: shutterEn, shutter_keywords_secondary: [],
+          istock_keywords_en: istockEn, istock_keywords_secondary: [],
+          translating: true,
         };
         setMetadata(entry.id, record);
+        processedEntries.push({ entry, meta, adobeEn, shutterEn, istockEn });
       }
       if (everypixelWarnings.length > 0) {
         setError(t('everypixel_warning', { n: everypixelWarnings.length, msg: everypixelWarnings[0] }));
@@ -259,7 +265,27 @@ function AppContent() {
       setGenerating(false);
       setGeneratingProgress(null);
     }
-  }, [files, selectedIds, currentEntry, settings, hint, mapIstock, setMetadata, setCurrentFileId, videoFrameByFileId, t]);
+    // Background pass: translate secondary-language fields per entry without blocking the UI.
+    for (const { entry, meta, adobeEn, shutterEn, istockEn } of processedEntries) {
+      void (async () => {
+        try {
+          const uniqueEn = buildUniqueEnList(adobeEn, shutterEn, istockEn);
+          const secMap = await apiTranslateUniqueKwToMap(uniqueEn, metaCreds, lang);
+          updateMetadata(entry.id, {
+            title_secondary: meta.title_secondary ?? '',
+            description_secondary: meta.description_secondary ?? '',
+            adobe_keywords_secondary: applyTrMap(adobeEn, secMap),
+            shutter_keywords_secondary: applyTrMap(shutterEn, secMap),
+            istock_keywords_secondary: applyTrMap(istockEn, secMap),
+            secondary_lang: lang.code,
+            translating: false,
+          });
+        } catch {
+          updateMetadata(entry.id, { translating: false });
+        }
+      })();
+    }
+  }, [files, selectedIds, currentEntry, settings, hint, mapIstock, setMetadata, updateMetadata, setCurrentFileId, videoFrameByFileId, t]);
 
   const handleRefreshTitleOnly = useCallback(async () => {
     const groqKeys = getActiveGroqKeys(settings);

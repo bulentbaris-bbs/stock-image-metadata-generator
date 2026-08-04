@@ -41,7 +41,7 @@ export function TitleDescriptionForm() {
           />
           <div className="px-3.5 pt-2.5 pb-3">
             <EditableText value={record.title_en ?? ''} onChange={(v) => updateMetadata(currentFileId, { title_en: v })} placeholder={t('field_title')} />
-            <TrInline value={record.title_secondary ?? ''} onCommit={(v) => updateMetadata(currentFileId, { title_secondary: v })} />
+            <TrInline value={record.title_secondary ?? ''} onCommit={(v) => updateMetadata(currentFileId, { title_secondary: v })} translating={record.translating} />
           </div>
         </div>
       </div>
@@ -56,7 +56,7 @@ export function TitleDescriptionForm() {
         />
         <div className="px-3 pt-1.5 pb-2">
           <EditableText value={record.description_en ?? ''} onChange={(v) => updateMetadata(currentFileId, { description_en: v })} multiline placeholder={t('field_description')} small />
-          <TrInline value={record.description_secondary ?? ''} onCommit={(v) => updateMetadata(currentFileId, { description_secondary: v })} small />
+          <TrInline value={record.description_secondary ?? ''} onCommit={(v) => updateMetadata(currentFileId, { description_secondary: v })} small translating={record.translating} />
         </div>
       </div>
     </>

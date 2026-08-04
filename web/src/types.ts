@@ -14,6 +14,8 @@ export interface MetadataRecord {
   shutter_keywords_secondary: string[];
   istock_keywords_en: string[];
   istock_keywords_secondary: string[];
+  /** True while secondary-language fields are being filled in the background after English generation completes. */
+  translating?: boolean;
 }
 
 export interface FileEntry {

@@ -182,7 +182,10 @@ export async function groqText(
   const body: Record<string, unknown> = {
     model: GROQ_TEXT_MODEL,
     temperature: options?.jsonMode ? 0.2 : 1,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [
+      { role: 'system', content: '/no_think' },
+      { role: 'user', content: prompt },
+    ],
     max_tokens: maxTokens,
   };
   if (options?.jsonMode) {
