@@ -137,11 +137,10 @@ export function KeywordChips({
     onUpdateSecondary(next);
     // A manual correction to the secondary-language keyword must also correct the English source term.
     const groqKeys = getActiveGroqKeys(settings);
-    const openRouterKey = settings.openrouter_api_key?.trim();
-    if (groqKeys.length === 0 && !openRouterKey) return;
+    if (groqKeys.length === 0) return;
     const lang = getLanguage(record.secondary_lang ?? settings.target_language);
     setTranslatingIdx(i);
-    apiTranslateToEnglish(v, { groqKeys, openRouterKey, lang: lang.code as UILang }, lang)
+    apiTranslateToEnglish(v, { groqKeys, lang: lang.code as UILang }, lang)
       .then((newEn) => {
         const cleaned = newEn.trim();
         if (cleaned) setEnAt(i, cleaned);

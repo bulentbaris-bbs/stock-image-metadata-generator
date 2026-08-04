@@ -209,6 +209,22 @@ const STRINGS: Record<string, Dict> = {
     ru: 'Введите хотя бы один API-ключ Groq (или резервный ключ OpenRouter) в настройках.',
     zh: '请在设置中至少输入一个 Groq API 密钥（或 OpenRouter 备用密钥）。',
   },
+  err_meta_needs_groq: {
+    tr: "Başlık ve açıklama üretimi için en az bir Groq API key gereklidir. Ayarlardan ekleyin.",
+    de: 'Für die Titel- und Beschreibungserstellung ist mindestens ein Groq-API-Key erforderlich. Bitte in den Einstellungen hinzufügen.',
+    es: 'Se requiere al menos una clave API de Groq para generar título y descripción. Añádela en Ajustes.',
+    fr: "Au moins une clé API Groq est requise pour générer le titre et la description. Ajoutez-en une dans les Paramètres.",
+    ru: 'Для генерации заголовка и описания требуется хотя бы один API-ключ Groq. Добавьте его в настройках.',
+    zh: '生成标题和描述至少需要一个 Groq API 密钥。请在设置中添加。',
+  },
+  err_groq_only_rate_limited: {
+    tr: "Groq API limiti doldu. Lütfen 30 saniye bekleyip tekrar deneyin. Daha hızlı üretim için Ayarlar'dan ek Groq key ekleyebilirsiniz.",
+    de: 'Groq-API-Limit erreicht. Bitte warten Sie 30 Sekunden und versuchen Sie es erneut. Für schnellere Generierung können Sie in den Einstellungen einen weiteren Groq-Key hinzufügen.',
+    es: 'Se alcanzó el límite de la API de Groq. Espera 30 segundos e inténtalo de nuevo. Para una generación más rápida, añade otra clave Groq en Ajustes.',
+    fr: "Limite de l'API Groq atteinte. Patientez 30 secondes puis réessayez. Pour une génération plus rapide, ajoutez une autre clé Groq dans les Paramètres.",
+    ru: 'Лимит API Groq исчерпан. Подождите 30 секунд и попробуйте снова. Для более быстрой генерации добавьте ещё один ключ Groq в настройках.',
+    zh: '已达 Groq API 限额。请等待 30 秒后重试。如需更快生成，可在设置中添加更多 Groq 密钥。',
+  },
   err_need_file: {
     tr: 'En az bir dosya seçin veya listeden bir dosyaya tıklayın.',
     de: 'Wählen Sie mindestens eine Datei aus oder klicken Sie auf eine Datei in der Liste.',

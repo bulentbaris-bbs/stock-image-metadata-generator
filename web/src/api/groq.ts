@@ -15,6 +15,12 @@ export interface AiCreds {
   lang?: UILang;
 }
 
+/** Groq-only — no OpenRouter field at all. Used for title/description/translation calls, which must never fall through to OpenRouter. */
+export interface GroqOnlyCreds {
+  groqKeys: string[];
+  lang?: UILang;
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -30,19 +36,24 @@ function enqueueVision<T>(task: () => Promise<T>): Promise<T> {
   return run;
 }
 
-/** Try every Groq key in the pool first (key 1 → 2 → 3 → 4, rotating past each one on 429); fall back to OpenRouter only once the whole pool is exhausted and an OpenRouter key is set. */
+/** Try every Groq key in the pool first (key 1 → 2 → 3 → 4, rotating past each one on 429); fall back to OpenRouter only once the whole pool is exhausted and an OpenRouter key is set. GroqOnlyCreds (no `openRouterKey` field at all) never falls back — used for title/description/translation, which must stay Groq-only. */
 async function withOpenRouterFallback<T>(
-  creds: AiCreds,
+  creds: AiCreds | GroqOnlyCreds,
   groqCall: (keys: string[]) => Promise<T>,
   openRouterCall: (openRouterKey: string) => Promise<T>,
 ): Promise<T> {
   const groqKeys = creds.groqKeys.filter(Boolean);
-  const openRouterKey = creds.openRouterKey?.trim();
+  const isGroqOnly = !('openRouterKey' in creds);
+  const openRouterKey = isGroqOnly ? undefined : (creds as AiCreds).openRouterKey?.trim();
+  const lang = creds.lang ?? 'tr';
   if (groqKeys.length > 0) {
     try {
       return await groqCall(groqKeys);
     } catch (e) {
-      if (!openRouterKey) throw e;
+      if (!openRouterKey) {
+        if (isGroqOnly) throw new Error(translate('err_groq_only_rate_limited', lang));
+        throw e;
+      }
       try {
         return await openRouterCall(openRouterKey);
       } catch {
@@ -51,7 +62,7 @@ async function withOpenRouterFallback<T>(
     }
   }
   if (openRouterKey) return openRouterCall(openRouterKey);
-  throw new Error(translate('err_groq_key_missing', creds.lang ?? 'tr'));
+  throw new Error(translate('err_groq_key_missing', lang));
 }
 
 /** Parse Groq's "Xs" rate-limit-reset header into milliseconds. */
@@ -129,8 +140,8 @@ async function groqChat(body: Record<string, unknown>, keys: string[], label: st
 export async function groqVision(
   b64: string,
   prompt: string,
-  creds: AiCreds,
-  maxTokens = 700
+  creds: AiCreds | GroqOnlyCreds,
+  maxTokens = 600
 ): Promise<string> {
   const lang = creds.lang ?? 'tr';
   return enqueueVision(() =>
@@ -142,6 +153,7 @@ export async function groqVision(
             model: GROQ_VISION_MODEL,
             temperature: 0.4,
             messages: [
+              { role: 'system', content: '/no_think' },
               {
                 role: 'user',
                 content: [
@@ -163,7 +175,7 @@ export async function groqVision(
 
 export async function groqText(
   prompt: string,
-  creds: AiCreds,
+  creds: AiCreds | GroqOnlyCreds,
   maxTokens = 500,
   options?: { jsonMode?: boolean }
 ): Promise<string> {

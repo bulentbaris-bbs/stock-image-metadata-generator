@@ -291,12 +291,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const record = metadataByFileId[fileId];
       if (!record) return;
       const groqKeys = getActiveGroqKeys(settings);
-      const openRouterKey = settings.openrouter_api_key?.trim();
-      if (groqKeys.length === 0 && !openRouterKey) return;
+      if (groqKeys.length === 0) return;
       const lang = getLanguage(settings.target_language);
       const enFiltered = enFull.map((s) => (s ?? '').trim()).filter(Boolean);
       if (enFiltered.length === 0) return;
-      const secFiltered = await apiTranslateKwNumbered(enFiltered, { groqKeys, openRouterKey, lang: lang.code as UILang }, lang);
+      const secFiltered = await apiTranslateKwNumbered(enFiltered, { groqKeys, lang: lang.code as UILang }, lang);
       const secFull: string[] = [];
       let j = 0;
       for (let i = 0; i < enFull.length; i++) {
@@ -317,8 +316,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const record = metadataByFileId[fileId];
       if (!record) return;
       const groqKeys = getActiveGroqKeys(settings);
-      const openRouterKey = settings.openrouter_api_key?.trim();
-      if (groqKeys.length === 0 && !openRouterKey) return;
+      if (groqKeys.length === 0) return;
       const lang = getLanguage(settings.target_language);
       const adobeEn = (record.adobe_keywords_en ?? []).map((k) => (k ?? '').trim()).filter(Boolean);
       const shutterEn = (record.shutter_keywords_en ?? []).map((k) => (k ?? '').trim()).filter(Boolean);
@@ -328,7 +326,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const istockEnFull = record.istock_keywords_en ?? [];
       if (adobeEn.length === 0 && shutterEn.length === 0 && istockEn.length === 0) return;
       const uniqueEn = buildUniqueEnList(adobeEnFull, shutterEnFull, istockEnFull);
-      const secMap = await apiTranslateUniqueKwToMap(uniqueEn, { groqKeys, openRouterKey, lang: lang.code as UILang }, lang);
+      const secMap = await apiTranslateUniqueKwToMap(uniqueEn, { groqKeys, lang: lang.code as UILang }, lang);
       updateMetadata(fileId, {
         adobe_keywords_secondary: applyTrMap(adobeEnFull, secMap),
         shutter_keywords_secondary: applyTrMap(shutterEnFull, secMap),
@@ -344,10 +342,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const record = recordFromCaller ?? metadataByFileId[fileId];
       if (!record) return;
       const groqKeys = getActiveGroqKeys(settings);
-      const openRouterKey = settings.openrouter_api_key?.trim();
-      if (groqKeys.length === 0 && !openRouterKey) return;
+      if (groqKeys.length === 0) return;
       const lang = getLanguage(settings.target_language);
-      const creds = { groqKeys, openRouterKey, lang: lang.code as UILang };
+      const creds = { groqKeys, lang: lang.code as UILang };
       const patch: Partial<MetadataRecord> = { secondary_lang: lang.code };
       if ((record.title_en ?? '').trim()) {
         patch.title_secondary = await apiTranslateSecondary(record.title_en, creds, lang);

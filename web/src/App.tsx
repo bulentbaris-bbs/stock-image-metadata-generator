@@ -13,6 +13,8 @@ import {
   applyTrMap,
   buildUniqueEnList,
   fillKeywordsToMax,
+  type AiCreds,
+  type GroqOnlyCreds,
 } from './api/groq';
 import { IStockModal } from './components/IStockModal';
 import { MainForm } from './components/MainForm';
@@ -162,8 +164,12 @@ function AppContent() {
     const groqKeys = getActiveGroqKeys(settings);
     const openRouterKey = settings.openrouter_api_key?.trim();
     const lang = getLanguage(settings.target_language);
-    const creds = { groqKeys, openRouterKey, lang: lang.code as UILang };
+    // Başlık/açıklama/çeviri — sadece Groq (OpenRouter'a asla düşmesin).
+    const metaCreds: GroqOnlyCreds = { groqKeys, lang: lang.code as UILang };
+    // Keyword tamamlama — Groq önce, OpenRouter yedek.
+    const kwCreds: AiCreds = { groqKeys, openRouterKey, lang: lang.code as UILang };
     if (groqKeys.length === 0 && !openRouterKey) { setError(t('err_need_key')); return; }
+    if (groqKeys.length === 0) { setError(t('err_meta_needs_groq')); return; }
     const orderedEntries = files.filter((f) => selectedIds.has(f.id));
     const toProcess = orderedEntries.length > 0 ? orderedEntries : (currentEntry ? [currentEntry] : []);
     if (toProcess.length === 0) { setError(t('err_need_file')); return; }
@@ -203,7 +209,7 @@ function AppContent() {
               let iEn = mapIstock(allKw.slice(0, ISTOCK_MAX));
               const needsGroq = aEn.length < ADOBE_MAX || sEn.length < SHUTTER_MAX || iEn.length < ISTOCK_MAX;
               if (needsGroq) {
-                const groqKw = await apiKeywordsAllPlatforms(b64, creds, hintText);
+                const groqKw = await apiKeywordsAllPlatforms(b64, kwCreds, hintText);
                 aEn = fillKeywordsToMax(aEn, ADOBE_MAX, groqKw);
                 sEn = fillKeywordsToMax(sEn, SHUTTER_MAX, groqKw);
                 iEn = fillKeywordsToMax(iEn, ISTOCK_MAX, mapIstock(groqKw));
@@ -213,22 +219,22 @@ function AppContent() {
               everypixelWarnings.push(
                 `${entry.name}: ${epError instanceof Error ? epError.message : t('err_everypixel_request_failed')}`
               );
-              return fromGroqList(await apiKeywordsAllPlatforms(b64, creds, hintText));
+              return fromGroqList(await apiKeywordsAllPlatforms(b64, kwCreds, hintText));
             }
           };
           // Metadata (title/description) and keywords don't depend on each other — running them
           // together instead of one-after-the-other is a large chunk of "Üret" wall-clock time back.
           [meta, { adobeEn, shutterEn, istockEn }] = await Promise.all([
-            apiMetadata(b64, creds, hintText, lang),
+            apiMetadata(b64, metaCreds, hintText, lang),
             getEnKeywords(),
           ]);
         } else {
-          const combined = await apiMetadataWithKeywords(b64, creds, hintText, lang);
+          const combined = await apiMetadataWithKeywords(b64, metaCreds, hintText, lang);
           meta = combined;
           ({ adobeEn, shutterEn, istockEn } = fromGroqList(combined.keywords));
         }
         const uniqueEn = buildUniqueEnList(adobeEn, shutterEn, istockEn);
-        const secMap = await apiTranslateUniqueKwToMap(uniqueEn, creds, lang);
+        const secMap = await apiTranslateUniqueKwToMap(uniqueEn, metaCreds, lang);
         const adobeSecondary = applyTrMap(adobeEn, secMap);
         const shutterSecondary = applyTrMap(shutterEn, secMap);
         const istockSecondary = applyTrMap(istockEn, secMap);
@@ -257,15 +263,14 @@ function AppContent() {
 
   const handleRefreshTitleOnly = useCallback(async () => {
     const groqKeys = getActiveGroqKeys(settings);
-    const openRouterKey = settings.openrouter_api_key?.trim();
-    if (groqKeys.length === 0 && !openRouterKey) { setError(t('err_need_key')); return; }
+    if (groqKeys.length === 0) { setError(t('err_meta_needs_groq')); return; }
     if (!currentEntry) { setError(t('err_select_file_first')); return; }
     setError(null);
     setRefreshingTitle(true);
     try {
       const b64 = await fileToBase64Jpeg(currentEntry.file, videoFrameByFileId[currentEntry.id]);
       const lang = getLanguage(settings.target_language);
-      const meta = await apiMetadata(b64, { groqKeys, openRouterKey, lang: lang.code as UILang }, hint.trim(), lang);
+      const meta = await apiMetadata(b64, { groqKeys, lang: lang.code as UILang }, hint.trim(), lang);
       updateMetadata(currentEntry.id, { title_en: meta.title_en ?? '', title_secondary: meta.title_secondary ?? '' });
     } catch (e) {
       setError(e instanceof Error ? e.message : t('err_title_refresh_failed'));
