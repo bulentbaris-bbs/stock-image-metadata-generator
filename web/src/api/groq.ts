@@ -332,7 +332,7 @@ async function runHedgeRefinePass(
 Banned in English fields (title_en, description_en): likely, probably, possibly, maybe, perhaps, appear/appears to (be), seem/seems to (be), it appears, might be, could be, given the presence, suggesting that.
 ${secondaryBan}
 
-Use direct present-tense statements only. Do not add new subjects or guesses. Titles: **do not shorten** to strip hedging—replace with concrete wording and keep length in the **~130–180** band (max **200**); if a title was long, the revised title should stay similarly substantial unless it was overlong. Descriptions: ~150–200 each (min ~120). Keep title_secondary and description_secondary in ${lang.name}.
+Use direct present-tense statements only. Do not add new subjects or guesses. Titles: **do not shorten** to strip hedging—replace with concrete wording and keep length in the **~150–175** band (min 130, max 200); if a title was long, the revised title should stay similarly substantial unless it was overlong. Descriptions: 220–350 characters each (minimum 200, hard maximum 400). Keep title_secondary and description_secondary in ${lang.name}.
 
 Return ONLY valid JSON:
 {"title_en":"","title_secondary":"","description_en":"","description_secondary":""}
@@ -408,7 +408,7 @@ Rules:
 - Do NOT repeat or copy the title wording. Expand on topic and content: actions, objects, equipment, relationships, setting/context, and the theme or story—details the titles do not already state. Do not lead with lighting, mood, color, or composition unless one short phrase clarifies the subject.
 - Use direct, declarative wording—no hedging (no probably, maybe, seems, likely, possibly, or their ${lang.name} equivalents). Do not start either description with hedging; do not use "given the presence of," "suggesting," or "likely" mid-sentence. Describe what is visible; if unsure of a label, use concrete general terms instead of qualifiers.
 - Avoid abstract closers like "sense of industry and productivity"—use concrete visible detail instead.
-- Each description 150-200 characters (minimum ~120). description_en in English, description_secondary in ${lang.name}.
+- Each description 220–350 characters (minimum 200, hard maximum 400). Write at least 2–3 full sentences. description_en in English, description_secondary in ${lang.name}.
 - Return ONLY valid JSON: {"description_en":"...","description_secondary":"..."}
 
 title_en: ${titleEn}
@@ -652,7 +652,7 @@ Existing keywords: ${existing.join(', ')}
 
 Output format: exactly one line of comma-separated keywords, nothing else.`;
   try {
-    const raw = await groqText(prompt, creds, 400);
+    const raw = await groqText(prompt, creds, 600);
     const more = parseKeywordCsv(raw);
     return fillKeywordsToMax(existing, KEYWORDS_TARGET, more);
   } catch {
