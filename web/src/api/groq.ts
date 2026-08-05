@@ -673,7 +673,7 @@ export async function apiKeywords(
   const prompt = KEYWORDS_PROMPT.replace('{platform}', platformNote).replace('{hint}', hintTxt);
   // Generous budget: the vision model reasons through the scene internally before listing 50 keywords,
   // and reasoning tokens eat into the same max_tokens budget — 450 was cutting the list short mid-response.
-  const raw = await groqVision(b64, prompt, creds, 1200);
+  const raw = await groqVision(b64, prompt, creds, 1800);
   return topUpKeywords(parseKeywordCsv(raw), creds, hint);
 }
 
@@ -687,7 +687,7 @@ export async function apiKeywordsAllPlatforms(
   const prompt = KEYWORDS_PROMPT.replace('{platform}', KEYWORDS_ALL_PLATFORMS).replace('{hint}', hintTxt);
   // Generous budget: the vision model reasons through the scene internally before listing 50 keywords,
   // and reasoning tokens eat into the same max_tokens budget — 450 was cutting the list short mid-response.
-  const raw = await groqVision(b64, prompt, creds, 1200);
+  const raw = await groqVision(b64, prompt, creds, 1800);
   return topUpKeywords(parseKeywordCsv(raw), creds, hint);
 }
 
