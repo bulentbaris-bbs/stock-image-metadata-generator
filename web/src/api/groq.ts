@@ -229,7 +229,7 @@ Description (description_en / description_secondary) — complementary detail ON
 - Never open descriptions with hedging or speculation (e.g. not "Probably…", "Likely…", "It appears…"); use present-tense, affirmative sentences that read as factual stock copy about what is in the frame.
 - Do not use hedging or inferential phrasing anywhere in the description body (not only the first words): avoid "likely," "given the presence of," "suggesting," "appears to be," "seems to," "may be working in." If props imply an industry, name the visible objects/setting directly.
 - Avoid weak abstract closers such as "convey a sense of industry and productivity" or "sense of collaboration"—replace with concrete visible detail or buyer use the image actually supports.
-- Length: 150–200 characters each (minimum ~120). description_secondary must be written in ${lang.name}; description_en in English.
+- Length: 220–350 characters each (minimum 200, hard maximum 400). Write at least 2–3 full sentences covering different content angles. description_secondary must be written in ${lang.name}; description_en in English.
 - Do NOT paste or lightly rephrase the title. No duplicate sentences from the title.`;
 }
 
@@ -573,7 +573,9 @@ Keyword rules (follow strictly):
 
 Also consider: buyer trends (2024-2025), commercial use (advertising, editorial, web, print), emotions, technical aspects, location/demographics if visible.
 
-Output format (critical): Your response must be exactly one line of comma-separated keywords — bare terms only. No introductory phrase (e.g. no "Here are the keywords:"), no sentences, no bullet points, no story text, no layout/composition labels, no closing remarks about the list itself (e.g. no "high-value keywords"). Do NOT annotate any entry with its own explanation in parentheses (e.g. write "fire extinguisher", not "fire extinguisher (main object)"; write "hand", not "hand (main subject)") — output the term alone, never the term plus your reasoning for picking it. Example: freediving, underwater, Halkidiki, Greece, marine life, Aegean sea, clear water, diving, adventure, action camera, discovery, extreme sport, nature, summer, freedom, vacation, travel, deep. Generate exactly 50 keywords.`;
+Output format (critical): Your response must be exactly one line of comma-separated keywords — bare terms only. No introductory phrase (e.g. no "Here are the keywords:"), no sentences, no bullet points, no story text, no layout/composition labels, no closing remarks about the list itself (e.g. no "high-value keywords"). Do NOT annotate any entry with its own explanation in parentheses (e.g. write "fire extinguisher", not "fire extinguisher (main object)"; write "hand", not "hand (main subject)") — output the term alone, never the term plus your reasoning for picking it. Example: freediving, underwater, Halkidiki, Greece, marine life, Aegean sea, clear water, diving, adventure, action camera, discovery, extreme sport, nature, summer, freedom, vacation, travel, deep. Generate exactly 50 keywords.
+
+You MUST output exactly 50 comma-separated keywords. If you run out of obvious keywords, add related concepts, settings, emotions, colors, and buyer use cases until you reach exactly 50. Do not stop before 50.`;
 
 const KEYWORDS_ALL_PLATFORMS =
   'Adobe Stock, Shutterstock, and iStock/Getty (one unified list of 50 English keywords optimized for all three microstock platforms)';
