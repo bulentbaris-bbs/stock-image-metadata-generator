@@ -212,7 +212,7 @@ Output format (critical): Return ONLY valid JSON with ALL four keys as non-empty
 
 Title (title_en / title_secondary) — what is visible (agency-style, buyer-facing):
 - State clearly what the image is about: main subject, action, and setting. Use "Who, What, Where, When" where helpful (one or two complete sentences if needed).
-- Target length (both title_en and title_secondary): **Aim for ~150 characters** (including spaces) as the ideal; keep roughly **130–180**; **hard maximum 200**. When the scene supports it, do **not** stop under **~120** with a thin one-liner—add subject, action, setting, and concrete anchors (gear, place type, shot feel) until you approach the target.
+- Target length (both title_en and title_secondary): **MINIMUM 150 characters, hard maximum 200 characters** (including spaces). You MUST write at least 150 characters — if the draft is shorter, add specific visible detail: subject, action, setting, gear, or context. Never submit a title under 150 characters. Ideal target: 160–185 characters.
 - Strong anchors (use when relevant to the image): region/country or named place if clearly inferable; environment (underwater, factory floor, etc.); shot feel (e.g. POV, wide shot, underwater shot) if it matches the frame; visible gear or role (hard hat, freediving, etc.).
 - For faceless or abstract commercial scenes, prefer phrasing like "unrecognizable …" when appropriate and name the theme (e.g. occupational health and safety concept, corporate wellness concept).
 - Avoid weak bare patterns like "Man doing X" or "X in Y" with no extra detail when the image supports richer wording.
@@ -229,6 +229,7 @@ Description (description_en / description_secondary) — complementary detail ON
 - Never open descriptions with hedging or speculation (e.g. not "Probably…", "Likely…", "It appears…"); use present-tense, affirmative sentences that read as factual stock copy about what is in the frame.
 - Do not use hedging or inferential phrasing anywhere in the description body (not only the first words): avoid "likely," "given the presence of," "suggesting," "appears to be," "seems to," "may be working in." If props imply an industry, name the visible objects/setting directly.
 - Avoid weak abstract closers such as "convey a sense of industry and productivity" or "sense of collaboration"—replace with concrete visible detail or buyer use the image actually supports.
+- You MUST write at least 200 characters for each description. If the draft is shorter, add more concrete scene detail.
 - Length: 220–350 characters each (minimum 200, hard maximum 400). Write at least 2–3 full sentences covering different content angles. description_secondary must be written in ${lang.name}; description_en in English.
 - Do NOT paste or lightly rephrase the title. No duplicate sentences from the title.`;
 }
