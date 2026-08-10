@@ -26,7 +26,7 @@ export function TitleDescriptionForm() {
 
   return (
     <>
-      <div className="flex gap-[18px] mb-3 h-[130px]">
+      <div className="flex gap-[18px] mb-[10px] h-[130px]">
         <PreviewImage key={entry.id} entry={entry} />
         <div className="flex-1 min-w-0 h-full border border-borderSoft rounded-xl overflow-hidden bg-card flex flex-col">
           <KwBar

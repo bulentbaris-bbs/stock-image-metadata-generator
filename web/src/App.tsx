@@ -325,11 +325,6 @@ function AppContent() {
         <Sidebar collapsed={sidebarCollapsed} search={fileSearch} />
         <main className="flex-1 flex flex-col min-w-0 min-h-0 bg-card">
           <MainForm onError={setError} />
-          <footer className="shrink-0 px-[22px] py-2 border-t border-borderSoft flex justify-end">
-            <span className="text-[11px] text-text3">
-              <kbd>↑</kbd><kbd>↓</kbd> {t('shortcut_nav')} · <kbd>→</kbd> {t('shortcut_go_to_fields')} · {t('shortcut_in_tab')} <kbd>←</kbd><kbd>→</kbd> {t('shortcut_change_platform')} · <kbd>⌘C</kbd> {t('shortcut_copy')}
-            </span>
-          </footer>
         </main>
       </div>
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />

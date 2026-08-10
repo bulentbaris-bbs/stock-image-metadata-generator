@@ -76,7 +76,7 @@ function Chip({
   const t = useT();
 
   return (
-    <span className="flex items-center gap-1.5 rounded-[7px] border border-borderSoft bg-chip pl-2.5 pr-1.5 py-1.5 text-[12px] transition-colors">
+    <span className="flex items-center gap-1 rounded-[7px] border border-borderSoft bg-chip px-[5px] py-[3px] text-[11px] transition-colors">
       <span className="text-text3 text-[10.5px]">{index + 1}</span>
       <span className={translating ? 'opacity-40 transition-opacity' : 'transition-opacity'}>
         <EditableSpan
@@ -90,8 +90,8 @@ function Chip({
       <EditableSpan
         value={tr}
         onCommit={onCommitTr}
-        className="outline-none cursor-text border-b border-dashed px-px text-text2 border-transparent hover:border-border focus:text-text focus:border-accent"
-        syncedClassName="outline-none cursor-text border-b border-dashed px-px text-green border-transparent"
+        className="outline-none cursor-text border-b border-dashed px-px text-[10px] text-text3 opacity-60 border-transparent hover:border-border hover:opacity-100 focus:text-text focus:opacity-100 focus:border-accent"
+        syncedClassName="outline-none cursor-text border-b border-dashed px-px text-[10px] text-green border-transparent"
       />
       <button type="button" onClick={onRemove} aria-label={t('remove_kw_aria')} className="btn-press text-text3 hover:text-red shrink-0">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -198,7 +198,7 @@ export function KeywordChips({
         fillColorClass={enList.length >= maxKw ? 'bg-greenBg' : 'bg-[#E1E6EC]'}
         getCopyText={() => enList.join(', ')}
       />
-      <div className="p-3.5 flex flex-wrap gap-1.5">
+      <div className="p-3.5 flex flex-wrap gap-1">
         {visible.map(({ en, tr, i }) => (
           <Chip key={i} index={i} en={en} tr={tr} onCommitEn={(v) => setEnAt(i, v)} onCommitTr={(v) => setTrAt(i, v)} onRemove={() => removeAt(i)} translating={translatingIdx === i} />
         ))}
