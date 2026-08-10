@@ -18,6 +18,10 @@ export function FileList({ collapsed, search }: { collapsed: boolean; search: st
     setFiles(list.map((file) => ({ id: getFileId(file), file, name: file.name })));
   };
 
+  const handleDropzoneClick = () => {
+    document.querySelector<HTMLInputElement>('input[type="file"]')?.click();
+  };
+
   const visibleFiles = useMemo(() => {
     const q = search.trim().toLowerCase();
     return q ? files.filter((f) => f.name.toLowerCase().includes(q)) : files;
@@ -37,7 +41,15 @@ export function FileList({ collapsed, search }: { collapsed: boolean; search: st
 
       <div className={`flex-1 overflow-y-auto min-h-0 ${collapsed ? 'px-2 pb-3 pt-0.5' : 'px-2 pb-3'}`} onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
         {files.length === 0 && !collapsed && (
-          <div className="border-2 border-dashed border-border rounded-lg p-6 mt-2 text-center text-text3 text-sm" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={handleDropzoneClick}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleDropzoneClick(); } }}
+            onDrop={handleDrop}
+            onDragOver={(e) => e.preventDefault()}
+            className="border-2 border-dashed border-border rounded-lg p-6 mt-2 text-center text-text3 text-sm cursor-pointer transition-colors hover:border-accent hover:bg-hover"
+          >
             {t('dropzone_text')}
           </div>
         )}
