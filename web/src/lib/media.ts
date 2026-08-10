@@ -23,6 +23,9 @@ function resolveSeekTime(duration: number, overrideSeconds?: number): number {
   return Math.min(Math.max(0, overrideSeconds), duration);
 }
 
+/** Guards against slow/mechanical disks: caps how long we wait for video metadata or a seek to resolve. */
+const SEEK_TIMEOUT_MS = 15000;
+
 export function getFileId(file: File): string {
   return `${file.name}-${file.size}-${file.lastModified}`;
 }
@@ -94,20 +97,45 @@ export function fileToBase64Jpeg(file: File, seekTimeOverride?: number): Promise
       video.src = url;
       video.muted = true;
       video.preload = 'metadata';
-      video.onloadedmetadata = () => { video.currentTime = resolveSeekTime(video.duration, seekTimeOverride); };
-      video.onseeked = () => {
-        const { w, h } = resizeToShortSide(video.videoWidth, video.videoHeight);
+
+      const captureFrame = () => {
+        const { w, h } = resizeToShortSide(video.videoWidth || 640, video.videoHeight || 360);
         const canvas = document.createElement('canvas');
         canvas.width = w;
         canvas.height = h;
         const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(video, 0, 0, w, h);
-          finish(canvas.toDataURL('image/jpeg', API_JPEG_QUALITY));
-        } else reject(new Error('Canvas failed'));
+        if (!ctx) { URL.revokeObjectURL(url); reject(new Error('Canvas failed')); return; }
+        ctx.drawImage(video, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', API_JPEG_QUALITY);
         URL.revokeObjectURL(url);
+        finish(dataUrl);
       };
-      video.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Video failed')); };
+
+      const metaTimer = setTimeout(() => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Video metadata yüklenemedi — disk çok yavaş olabilir'));
+      }, SEEK_TIMEOUT_MS);
+
+      video.onloadedmetadata = () => {
+        clearTimeout(metaTimer);
+        const seekTime = resolveSeekTime(video.duration, seekTimeOverride);
+
+        // If onseeked never fires, fall back to whatever frame is currently displayed.
+        const seekTimer = setTimeout(captureFrame, SEEK_TIMEOUT_MS);
+
+        video.onseeked = () => {
+          clearTimeout(seekTimer);
+          captureFrame();
+        };
+
+        video.currentTime = seekTime;
+      };
+
+      video.onerror = () => {
+        clearTimeout(metaTimer);
+        URL.revokeObjectURL(url);
+        reject(new Error('Video yüklenemedi'));
+      };
     } else reject(new Error('Unsupported file type'));
   });
 }
@@ -134,23 +162,44 @@ export function getThumbnailUrl(
       video.src = url;
       video.muted = true;
       video.preload = 'metadata';
-      video.onloadedmetadata = () => { video.currentTime = resolveSeekTime(video.duration, seekTimeOverride); };
-      video.onseeked = () => {
+
+      const captureFrame = () => {
         const canvas = document.createElement('canvas');
-        canvas.width = Math.min(video.videoWidth, maxSize.w);
-        canvas.height = Math.min(video.videoHeight, maxSize.h);
+        canvas.width = Math.min(video.videoWidth || maxSize.w, maxSize.w);
+        canvas.height = Math.min(video.videoHeight || maxSize.h, maxSize.h);
         const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const dataUrl = canvas.toDataURL('image/png');
-          URL.revokeObjectURL(url);
-          resolve(dataUrl);
-        } else {
-          URL.revokeObjectURL(url);
-          reject(new Error('Canvas failed'));
-        }
+        if (!ctx) { URL.revokeObjectURL(url); reject(new Error('Canvas failed')); return; }
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/png');
+        URL.revokeObjectURL(url);
+        resolve(dataUrl);
       };
-      video.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Video failed')); };
+
+      const metaTimer = setTimeout(() => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Video metadata yüklenemedi — disk çok yavaş olabilir'));
+      }, SEEK_TIMEOUT_MS);
+
+      video.onloadedmetadata = () => {
+        clearTimeout(metaTimer);
+        const seekTime = resolveSeekTime(video.duration, seekTimeOverride);
+
+        // If onseeked never fires, fall back to whatever frame is currently displayed.
+        const seekTimer = setTimeout(captureFrame, SEEK_TIMEOUT_MS);
+
+        video.onseeked = () => {
+          clearTimeout(seekTimer);
+          captureFrame();
+        };
+
+        video.currentTime = seekTime;
+      };
+
+      video.onerror = () => {
+        clearTimeout(metaTimer);
+        URL.revokeObjectURL(url);
+        reject(new Error('Video yüklenemedi'));
+      };
     });
   }
   return Promise.reject(new Error('Unsupported file type'));
