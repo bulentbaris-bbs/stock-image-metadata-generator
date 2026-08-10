@@ -1,4 +1,5 @@
 import { DEFAULT_SECONDARY_LANG } from './languages';
+import STARTER_MAP from '../data/istockStarterMap.json';
 import type { IStockMap, MetadataRecord, Settings } from '../types';
 
 export const MAX_GROQ_KEYS = 4;
@@ -64,8 +65,18 @@ export function getActiveGroqKeys(settings: Settings): string[] {
 }
 
 export function loadIStockMap(): IStockMap {
-  const s = localStorage.getItem(ISTOCK_KEY);
-  return s ? safeParseJson<IStockMap>(s, {}) : {};
+  const saved = localStorage.getItem(ISTOCK_KEY);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved) as IStockMap;
+      // Starter map'teki yeni kelimeleri mevcut listeye ekle
+      // (kullanıcının özel seçimleri korunur, sadece eksikler eklenir)
+      return { ...(STARTER_MAP as IStockMap), ...parsed };
+    } catch {
+      // fall through to starter map
+    }
+  }
+  return { ...(STARTER_MAP as IStockMap) };
 }
 
 export function saveIStockMap(map: IStockMap): void {

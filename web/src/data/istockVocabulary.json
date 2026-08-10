@@ -1,0 +1,2680 @@
+{
+  "woman": [
+    "Women"
+  ],
+  "man": [
+    "Men"
+  ],
+  "girl": [
+    "Girls"
+  ],
+  "boy": [
+    "Males"
+  ],
+  "person": [
+    "People"
+  ],
+  "people": [
+    "People"
+  ],
+  "child": [
+    "Child"
+  ],
+  "baby": [
+    "Baby - Human Age"
+  ],
+  "adult": [
+    "Adult"
+  ],
+  "senior": [
+    "Senior Adult"
+  ],
+  "teenager": [
+    "Teenager"
+  ],
+  "businessman": [
+    "Businessman"
+  ],
+  "businesswoman": [
+    "Businesswoman"
+  ],
+  "worker": [
+    "Occupation",
+    "Labor Union",
+    "Dock Worker"
+  ],
+  "employee": [
+    "Employee"
+  ],
+  "doctor": [
+    "Doctor",
+    "Medical Exam",
+    "Medical Instrument",
+    "Doctor's Office"
+  ],
+  "nurse": [
+    "Nurse",
+    "Medical Student"
+  ],
+  "teacher": [
+    "Teacher"
+  ],
+  "student": [
+    "Student"
+  ],
+  "chef": [
+    "Chef"
+  ],
+  "engineer": [
+    "Engineer"
+  ],
+  "architect": [
+    "Architect"
+  ],
+  "lawyer": [
+    "Lawyer"
+  ],
+  "athlete": [
+    "Athlete"
+  ],
+  "customer": [
+    "Customer"
+  ],
+  "tourist": [
+    "Tourist",
+    "Travel Destinations",
+    "Tourism",
+    "Tourist Resort"
+  ],
+  "smiling": [
+    "Smiling"
+  ],
+  "laughing": [
+    "Laughing"
+  ],
+  "happy": [
+    "Happiness"
+  ],
+  "sad": [
+    "Sadness"
+  ],
+  "angry": [
+    "Anger"
+  ],
+  "excited": [
+    "Excitement"
+  ],
+  "relaxed": [
+    "Relaxation"
+  ],
+  "confident": [
+    "Confidence"
+  ],
+  "thinking": [
+    "Contemplation"
+  ],
+  "working": [
+    "Working"
+  ],
+  "sitting": [
+    "Sitting"
+  ],
+  "standing": [
+    "Standing"
+  ],
+  "walking": [
+    "Walking"
+  ],
+  "running": [
+    "Running",
+    "Marathon",
+    "Sports Shoe"
+  ],
+  "exercising": [
+    "Exercising"
+  ],
+  "cooking": [
+    "Cooking",
+    "Cooking Utensil",
+    "Chef's Hat"
+  ],
+  "eating": [
+    "Eating"
+  ],
+  "drinking": [
+    "Drinking"
+  ],
+  "reading": [
+    "Reading",
+    "Reading Glasses",
+    "Printed Media"
+  ],
+  "writing": [
+    "Writing - Activity",
+    "Handwriting",
+    "Writing Instrument"
+  ],
+  "talking": [
+    "Talking"
+  ],
+  "shopping": [
+    "Shopping",
+    "Retail",
+    "Shopping Mall",
+    "Shopping Bag",
+    "Online Shopping",
+    "Shopping Cart"
+  ],
+  "driving": [
+    "Driving"
+  ],
+  "handshake": [
+    "Handshake"
+  ],
+  "laptop": [
+    "Laptop",
+    "Using Laptop"
+  ],
+  "computer": [
+    "Computer",
+    "Technology"
+  ],
+  "smartphone": [
+    "Smart Phone"
+  ],
+  "tablet": [
+    "Digital Tablet"
+  ],
+  "office": [
+    "White Collar Worker",
+    "Office Building Exterior"
+  ],
+  "workplace": [
+    "Place of Work",
+    "Corporate Culture"
+  ],
+  "kitchen": [
+    "Kitchen",
+    "Kitchen Utensil"
+  ],
+  "bedroom": [
+    "Bedroom"
+  ],
+  "bathroom": [
+    "Bathroom",
+    "Public Restroom"
+  ],
+  "hospital": [
+    "Hospital",
+    "Medical Equipment",
+    "Medical Occupation"
+  ],
+  "classroom": [
+    "Classroom",
+    "Lecture Hall"
+  ],
+  "laboratory": [
+    "Laboratory",
+    "Laboratory Equipment",
+    "Scientific Experiment"
+  ],
+  "gym": [
+    "Gym",
+    "Health Club",
+    "Exercise Equipment"
+  ],
+  "park": [
+    "Natural Parkland",
+    "Public Park"
+  ],
+  "beach": [
+    "Beach",
+    "Sand",
+    "Beach Holiday",
+    "Beach Volleyball",
+    "Beach Party"
+  ],
+  "mountain": [
+    "Mountain",
+    "Mountain Range",
+    "Mountain Peak"
+  ],
+  "forest": [
+    "Forest"
+  ],
+  "city": [
+    "Cityscape",
+    "City Life",
+    "City Street",
+    "Downtown District"
+  ],
+  "street": [
+    "Street",
+    "City Life"
+  ],
+  "sunset": [
+    "Sunset"
+  ],
+  "sunrise": [
+    "Sunrise - Dawn"
+  ],
+  "indoors": [
+    "Indoors"
+  ],
+  "outdoors": [
+    "Outdoors"
+  ],
+  "dog": [
+    "Dog",
+    "Canine - Animal"
+  ],
+  "cat": [
+    "Domestic Cat",
+    "Feline"
+  ],
+  "flower": [
+    "Flower",
+    "Flower Arrangement"
+  ],
+  "tree": [
+    "Tree",
+    "Tree Area"
+  ],
+  "food": [
+    "Food",
+    "Food and Drink"
+  ],
+  "coffee": [
+    "Coffee - Drink",
+    "Coffee Cup",
+    "Coffee Shop"
+  ],
+  "vacation": [
+    "Vacations",
+    "Travel Destinations"
+  ],
+  "travel": [
+    "Travel",
+    "Vacations",
+    "Travel Destinations",
+    "Tourist",
+    "Journey",
+    "Business Travel"
+  ],
+  "car": [
+    "Car",
+    "Vehicle"
+  ],
+  "airplane": [
+    "Airplane"
+  ],
+  "train": [
+    "Train - Vehicle",
+    "Railroad Track"
+  ],
+  "bicycle": [
+    "Bicycle",
+    "Cycling"
+  ],
+  "teamwork": [
+    "Teamwork"
+  ],
+  "innovation": [
+    "Innovation",
+    "Breaking New Ground"
+  ],
+  "creativity": [
+    "Creativity"
+  ],
+  "technology": [
+    "Technology"
+  ],
+  "business": [
+    "Business Finance and Industry",
+    "White Collar Worker",
+    "Business Person",
+    "Commercial Activity"
+  ],
+  "couple": [
+    "Couple - Relationship",
+    "Young Couple"
+  ],
+  "family": [
+    "Family",
+    "Domestic Life"
+  ],
+  "friends": [
+    "Friendship"
+  ],
+  "group": [
+    "Group Of People",
+    "Community"
+  ],
+  "team": [
+    "Sports Team",
+    "Teamwork"
+  ],
+  "portrait": [
+    "Portrait",
+    "Close-up",
+    "Studio Shot",
+    "Formal Portrait"
+  ],
+  "nature": [
+    "Nature",
+    "Non-Urban Scene",
+    "Beauty In Nature"
+  ],
+  "sky": [
+    "Sky",
+    "Cloud - Sky"
+  ],
+  "water": [
+    "Water",
+    "Wave - Water"
+  ],
+  "light": [
+    "Light - Natural Phenomenon"
+  ],
+  "shadow": [
+    "Shadow",
+    "In Silhouette"
+  ],
+  "color": [
+    "Multi Colored"
+  ],
+  "success": [
+    "Success",
+    "Conquering Adversity",
+    "Continuity"
+  ],
+  "failure": [
+    "Failure",
+    "Communication Problems"
+  ],
+  "achievement": [
+    "Achievement"
+  ],
+  "growth": [
+    "Growth",
+    "Growth Chart",
+    "Growth Mindset"
+  ],
+  "leadership": [
+    "Leadership"
+  ],
+  "communication": [
+    "Communication",
+    "Communication Problems"
+  ],
+  "meeting": [
+    "Meeting",
+    "Meeting Room",
+    "Conference Table"
+  ],
+  "presentation": [
+    "Presentation - Speech",
+    "Slide Show",
+    "Press Conference",
+    "Whiteboard - Visual Aid"
+  ],
+  "conference": [
+    "Conference - Event",
+    "Convention Center",
+    "Conference Call"
+  ],
+  "education": [
+    "Education",
+    "Educational Exam",
+    "School Supplies"
+  ],
+  "learning": [
+    "Learning"
+  ],
+  "health": [
+    "Healthy Lifestyle",
+    "Healthcare And Medicine",
+    "Healthcare Worker",
+    "Medical Occupation"
+  ],
+  "wellness": [
+    "Wellbeing",
+    "Health Spa"
+  ],
+  "fitness": [
+    "Healthy Lifestyle",
+    "Exercising",
+    "Exercise Equipment",
+    "Health Club"
+  ],
+  "yoga": [
+    "Yoga",
+    "Yoga Class",
+    "Yoga Instructor",
+    "Yoga Pants"
+  ],
+  "meditation": [
+    "Meditating",
+    "Relaxation Exercise",
+    "Zen-like"
+  ],
+  "diet": [
+    "Dieting",
+    "Healthy Eating",
+    "Nutritionist"
+  ],
+  "nutrition": [
+    "Healthy Eating",
+    "Nutrition Label",
+    "Nutritionist"
+  ],
+  "exercise": [
+    "Exercising",
+    "Exercise Equipment",
+    "Exercise Machine",
+    "Exercise Mat"
+  ],
+  "pregnancy": [
+    "Pregnant",
+    "Maternity Wear",
+    "Pregnancy Test"
+  ],
+  "newborn": [
+    "Newborn",
+    "Newborn Animal"
+  ],
+  "disability": [
+    "Disability",
+    "Athlete with Disabilities",
+    "Accessibility for Persons with Disabilities"
+  ],
+  "diversity": [
+    "Diversity",
+    "Multiracial Group",
+    "Multiculturalism",
+    "Social Inclusion"
+  ],
+  "equality": [
+    "equality",
+    "Human Rights"
+  ],
+  "sustainability": [
+    "Sustainable Resources",
+    "Sustainable Lifestyle",
+    "Zero Waste"
+  ],
+  "environment": [
+    "environment",
+    "Environmental Issues",
+    "Environmental Conservation"
+  ],
+  "recycling": [
+    "Recycling",
+    "Recycling Bin",
+    "Recycling Symbol"
+  ],
+  "pollution": [
+    "Pollution",
+    "Air Pollution"
+  ],
+  "solar": [
+    "Solar Energy",
+    "Solar Power Station",
+    "Solar Panel",
+    "Solar Equipment"
+  ],
+  "wind": [
+    "Wind",
+    "Sailboat"
+  ],
+  "energy": [
+    "Vitality",
+    "Fuel and Power Generation",
+    "Energy Efficient"
+  ],
+  "agriculture": [
+    "Agriculture",
+    "Agricultural Field",
+    "Agricultural Equipment"
+  ],
+  "farm": [
+    "Farm",
+    "Agricultural Field",
+    "Farmer",
+    "Livestock"
+  ],
+  "construction": [
+    "Construction Industry",
+    "Construction Site",
+    "Construction Worker",
+    "Hardhat"
+  ],
+  "industry": [
+    "Industry",
+    "Business Finance and Industry",
+    "Manufacturing Occupation"
+  ],
+  "manufacturing": [
+    "Manufacturing",
+    "Factory",
+    "Manufacturing Equipment"
+  ],
+  "warehouse": [
+    "Warehouse",
+    "Distribution Warehouse",
+    "Warehouse Worker",
+    "Loading Dock"
+  ],
+  "transport": [
+    "transportation",
+    "Mode of Transport",
+    "Freight Transportation"
+  ],
+  "logistics": [
+    "Freight Transportation",
+    "Supply Chain",
+    "Warehouse"
+  ],
+  "delivery": [
+    "Delivering",
+    "Delivery Person",
+    "Delivery Van"
+  ],
+  "shipping": [
+    "Shipping",
+    "Freight Transportation",
+    "Cargo Container"
+  ],
+  "package": [
+    "Package",
+    "Box - Container"
+  ],
+  "safety": [
+    "Safety",
+    "Protective Workwear",
+    "Safety Equipment"
+  ],
+  "security": [
+    "Security",
+    "Security Staff",
+    "Security Guard",
+    "Network Security"
+  ],
+  "protection": [
+    "Protection",
+    "Protective Suit"
+  ],
+  "insurance": [
+    "Insurance",
+    "Insurance Agent"
+  ],
+  "law": [
+    "Law",
+    "Crime",
+    "Police Force",
+    "Legal Occupation",
+    "Courthouse"
+  ],
+  "justice": [
+    "Justice - Concept",
+    "Lady Justice",
+    "Courthouse"
+  ],
+  "government": [
+    "Government",
+    "Politics and Government",
+    "Government Building",
+    "Parliament Building"
+  ],
+  "politics": [
+    "Politics",
+    "Government",
+    "Politics and Government"
+  ],
+  "election": [
+    "Election",
+    "Ballot Box",
+    "Election Poster"
+  ],
+  "freedom": [
+    "Freedom"
+  ],
+  "money": [
+    "Currency",
+    "Making Money",
+    "Savings",
+    "Paying",
+    "Paper Currency"
+  ],
+  "finance": [
+    "Business Finance and Industry",
+    "Finance and Economy",
+    "Financial Occupation",
+    "Financial Report"
+  ],
+  "investment": [
+    "Investment",
+    "Savings",
+    "Return on Investment",
+    "Financial Planning"
+  ],
+  "banking": [
+    "Banking",
+    "Bank Account",
+    "ATM",
+    "Electronic Banking"
+  ],
+  "economy": [
+    "Economy",
+    "Finance and Economy",
+    "Budget",
+    "Inflation - Economics"
+  ],
+  "retail": [
+    "Retail",
+    "Retail Place",
+    "Store",
+    "Shopping Mall"
+  ],
+  "market": [
+    "Market - Retail Space",
+    "Market Stall",
+    "Market Research"
+  ],
+  "sale": [
+    "Sale",
+    "Marketing",
+    "Sales Occupation",
+    "Price Tag"
+  ],
+  "discount": [
+    "Sale",
+    "Discount Store"
+  ],
+  "startup": [
+    "New Business"
+  ],
+  "entrepreneur": [
+    "Entrepreneur"
+  ],
+  "office worker": [
+    "White Collar Worker"
+  ],
+  "manager": [
+    "Manager"
+  ],
+  "executive": [
+    "Business Person",
+    "Senior Management",
+    "Business Travel"
+  ],
+  "professional": [
+    "Professional Occupation",
+    "Expertise",
+    "Business Person"
+  ],
+  "volunteer": [
+    "Volunteer"
+  ],
+  "charity": [
+    "Charity and Relief Work",
+    "Charitable Donation",
+    "Donation Box"
+  ],
+  "celebration": [
+    "Celebration",
+    "Celebration Event"
+  ],
+  "party": [
+    "Party - Social Event",
+    "Balloon",
+    "Beach Party"
+  ],
+  "birthday": [
+    "Birthday",
+    "Birthday Cake",
+    "Birthday Candle",
+    "Birthday Card"
+  ],
+  "wedding": [
+    "Wedding",
+    "Wedding Ceremony",
+    "Wedding Dress",
+    "Wedding Ring",
+    "Wedding Cake"
+  ],
+  "graduation": [
+    "Graduation",
+    "Diploma",
+    "Mortarboard",
+    "Graduation Gown"
+  ],
+  "holiday": [
+    "Vacations",
+    "Holiday - Event",
+    "Travel Destinations"
+  ],
+  "christmas": [
+    "Christmas",
+    "Christmas Decoration",
+    "Christmas Tree",
+    "Christmas Ornament"
+  ],
+  "halloween": [
+    "Halloween",
+    "Jack O' Lantern"
+  ],
+  "thanksgiving": [
+    "Thanksgiving - Holiday"
+  ],
+  "sport": [
+    "Sports Activity",
+    "Sports Event",
+    "Sports Team",
+    "Moving Activity"
+  ],
+  "football": [
+    "Soccer",
+    "American Football - Sport",
+    "Soccer Ball"
+  ],
+  "basketball": [
+    "Basketball - Sport",
+    "Basketball - Ball"
+  ],
+  "tennis": [
+    "Tennis",
+    "Tennis Racket",
+    "Tennis Ball"
+  ],
+  "swimming": [
+    "Swimming",
+    "Swimming Pool",
+    "Swimming Goggles"
+  ],
+  "cycling": [
+    "Cycling",
+    "Mountain Biking",
+    "Cycling Helmet"
+  ],
+  "hiking": [
+    "Hiking",
+    "Hiking Boot",
+    "Hiking Pole",
+    "Footpath"
+  ],
+  "climbing": [
+    "Mountain Climbing",
+    "Climbing Equipment",
+    "Climbing Rope"
+  ],
+  "surfing": [
+    "Surfing",
+    "Surfboard",
+    "Surf Culture"
+  ],
+  "baking": [
+    "Baking",
+    "making a cake",
+    "Baking Bread"
+  ],
+  "gardening": [
+    "Gardening",
+    "Gardening Equipment",
+    "Gardening Glove"
+  ],
+  "cleaning": [
+    "Cleaning",
+    "Cleaning Equipment",
+    "housework"
+  ],
+  "painting": [
+    "Painting - Activity",
+    "Paintbrush",
+    "Artist's Canvas"
+  ],
+  "photography": [
+    "Photography",
+    "Photo Shoot",
+    "Photographer",
+    "Photographic Equipment"
+  ],
+  "music": [
+    "Music",
+    "Musical Instrument",
+    "Concert",
+    "Musician"
+  ],
+  "dancing": [
+    "Dancing",
+    "Dance Studio"
+  ],
+  "singing": [
+    "Singing"
+  ],
+  "playing": [
+    "Playing",
+    "Sports Activity",
+    "Playful"
+  ],
+  "studying": [
+    "Studying",
+    "Learning",
+    "Homework"
+  ],
+  "drawing": [
+    "Drawing - Activity",
+    "Drawing - Art Product",
+    "Illustration Technique"
+  ],
+  "crafting": [
+    "Craft"
+  ],
+  "house": [
+    "House",
+    "Home Interior",
+    "Domestic Life",
+    "Household Equipment"
+  ],
+  "home": [
+    "Residential Building",
+    "Home Interior",
+    "Domestic Life"
+  ],
+  "apartment": [
+    "Apartment",
+    "Tower Block - Residential Building"
+  ],
+  "building": [
+    "Built Structure",
+    "Building Exterior",
+    "Architecture"
+  ],
+  "architecture": [
+    "Architecture",
+    "Blueprint",
+    "Architectural Model"
+  ],
+  "interior": [
+    "Indoors",
+    "Interior Decor",
+    "Home Interior",
+    "Vehicle Interior"
+  ],
+  "exterior": [
+    "Outdoors",
+    "Building Exterior"
+  ],
+  "furniture": [
+    "Furniture",
+    "Furniture Store"
+  ],
+  "door": [
+    "Door",
+    "Doorway",
+    "Doorknob"
+  ],
+  "window": [
+    "Window",
+    "Window Frame",
+    "Window Sill"
+  ],
+  "bridge": [
+    "Bridge - Built Structure"
+  ],
+  "road": [
+    "Road",
+    "Journey",
+    "Highway",
+    "Road Trip"
+  ],
+  "highway": [
+    "Highway",
+    "Road Sign",
+    "Road Marking"
+  ],
+  "tunnel": [
+    "Tunnel"
+  ],
+  "airport": [
+    "Airport",
+    "Airport Terminal",
+    "Airport Runway"
+  ],
+  "hospital room": [
+    "Hospital Ward"
+  ],
+  "waiting room": [
+    "Waiting Room"
+  ],
+  "lobby": [
+    "Lobby"
+  ],
+  "corridor": [
+    "Corridor",
+    "Entrance Hall"
+  ],
+  "ocean": [
+    "Sea",
+    "Wave - Water",
+    "Ocean Floor"
+  ],
+  "sea": [
+    "Sea",
+    "Beach",
+    "Coastline"
+  ],
+  "lake": [
+    "Lake",
+    "Waterfront",
+    "Lakeshore"
+  ],
+  "river": [
+    "River",
+    "Riverbank",
+    "Waterfront"
+  ],
+  "waterfall": [
+    "Waterfall"
+  ],
+  "desert": [
+    "Desert Area",
+    "Sand Dune",
+    "Desert Oasis"
+  ],
+  "jungle": [
+    "Rainforest"
+  ],
+  "field": [
+    "Agricultural Field",
+    "Sports Field"
+  ],
+  "meadow": [
+    "Meadow",
+    "Wildflower"
+  ],
+  "hill": [
+    "Hill",
+    "Hiking",
+    "Hill Range"
+  ],
+  "rock": [
+    "Rock - Object",
+    "Rock Formation",
+    "Extreme Terrain"
+  ],
+  "stone": [
+    "Stone Material",
+    "Stone Wall"
+  ],
+  "sand": [
+    "Sand",
+    "Sand Dune",
+    "Beach"
+  ],
+  "mud": [
+    "Mud"
+  ],
+  "ice": [
+    "Ice",
+    "Cold Temperature",
+    "Ice Skating"
+  ],
+  "snow": [
+    "Snow",
+    "Snowcapped Mountain",
+    "Blizzard"
+  ],
+  "spring": [
+    "Springtime"
+  ],
+  "summer": [
+    "Summer"
+  ],
+  "autumn": [
+    "Autumn",
+    "Autumn Leaf Color"
+  ],
+  "winter": [
+    "Winter",
+    "Snow",
+    "Winter Sport"
+  ],
+  "weather": [
+    "Weather",
+    "Climate",
+    "Natural Disaster"
+  ],
+  "rain": [
+    "Rain",
+    "Raindrop",
+    "Storm Cloud"
+  ],
+  "storm": [
+    "Storm",
+    "Dramatic Sky",
+    "Storm Cloud"
+  ],
+  "fog": [
+    "fog"
+  ],
+  "cloud": [
+    "Cloud - Sky",
+    "Cloud Computing",
+    "Cloudscape"
+  ],
+  "heat": [
+    "Heat - Temperature"
+  ],
+  "cold": [
+    "Cold Temperature",
+    "Cold And Flu"
+  ],
+  "fire": [
+    "Fire - Natural Phenomenon",
+    "Fireplace",
+    "Firefighter"
+  ],
+  "smoke": [
+    "Smoke",
+    "Smoking - Activity",
+    "Fireplace"
+  ],
+  "dust": [
+    "Dust"
+  ],
+  "close up": [
+    "Close-up"
+  ],
+  "aerial view": [
+    "Aerial view"
+  ],
+  "background": [
+    "Backgrounds",
+    "Colored Background"
+  ],
+  "texture": [
+    "Textured",
+    "Textured Effect"
+  ],
+  "pattern": [
+    "Pattern",
+    "Natural Pattern"
+  ],
+  "abstract": [
+    "Abstract",
+    "Abstract Backgrounds"
+  ],
+  "black and white": [
+    "Monochrome Clothing"
+  ],
+  "silhouette": [
+    "In Silhouette",
+    "Outline"
+  ],
+  "surgeon": [
+    "Surgeon",
+    "Surgical Mask",
+    "Surgical Glove",
+    "Operating Gown"
+  ],
+  "patient": [
+    "Patient",
+    "Hospital Gown",
+    "Intensive Care Unit"
+  ],
+  "paramedic": [
+    "paramedic"
+  ],
+  "pharmacist": [
+    "Pharmacist"
+  ],
+  "dentist": [
+    "Dentist",
+    "Dental Health",
+    "Dental Equipment",
+    "Dental Office"
+  ],
+  "physiotherapist": [
+    "Physical Therapist"
+  ],
+  "clinic": [
+    "Medical Clinic",
+    "Medical Exam",
+    "Medical Research"
+  ],
+  "operating room": [
+    "Operating Room",
+    "Surgical Light"
+  ],
+  "pharmacy": [
+    "Pharmacy",
+    "Pharmaceutical Industry"
+  ],
+  "emergency room": [
+    "Emergency Room"
+  ],
+  "stethoscope": [
+    "Stethoscope"
+  ],
+  "syringe": [
+    "Syringe",
+    "Injection Pen"
+  ],
+  "pill": [
+    "Pill",
+    "Capsule - Medicine",
+    "Pill Bottle"
+  ],
+  "medicine": [
+    "Medicine",
+    "Healthcare And Medicine",
+    "Herbal Medicine"
+  ],
+  "bandage": [
+    "Bandage"
+  ],
+  "wheelchair": [
+    "Wheelchair"
+  ],
+  "x-ray": [
+    "X-ray"
+  ],
+  "surgery": [
+    "Surgery",
+    "Surgical Procedure"
+  ],
+  "vaccination": [
+    "Vaccination",
+    "Vaccine"
+  ],
+  "solar panel": [
+    "Solar Panel"
+  ],
+  "wind turbine": [
+    "wind turbine"
+  ],
+  "hydropower": [
+    "Hydroelectric Power",
+    "Hydroelectric Power Station"
+  ],
+  "biomass": [
+    "Biomass - Renewable Energy Source"
+  ],
+  "geothermal": [
+    "Geothermal Power Station",
+    "Hot Spring"
+  ],
+  "tidal energy": [
+    "Tidal Power"
+  ],
+  "power plant": [
+    "Power Station"
+  ],
+  "oil rig": [
+    "Offshore Platform",
+    "Drilling Rig",
+    "Oil Worker"
+  ],
+  "pipeline": [
+    "Pipeline"
+  ],
+  "refinery": [
+    "Refinery"
+  ],
+  "coal": [
+    "Coal",
+    "Coal Mine",
+    "Coal Miner"
+  ],
+  "nuclear power": [
+    "Nuclear Power Station",
+    "Nuclear Energy"
+  ],
+  "generator": [
+    "Generator"
+  ],
+  "transformer": [
+    "Electricity Transformer"
+  ],
+  "power line": [
+    "Power Line",
+    "Power Cable"
+  ],
+  "battery": [
+    "Battery",
+    "Rechargeable Battery",
+    "Battery Cell"
+  ],
+  "electric meter": [
+    "Electric Meter"
+  ],
+  "fuel cell": [
+    "Fuel Cell"
+  ],
+  "electrician": [
+    "Electrician"
+  ],
+  "energy worker": [
+    "Power Occupation"
+  ],
+  "renewable energy": [
+    "Renewable Energy"
+  ],
+  "clean energy": [
+    "Sustainable Energy"
+  ],
+  "carbon footprint": [
+    "Carbon Footprint"
+  ],
+  "electric car": [
+    "Electric Car",
+    "Electric Vehicle Charging Station"
+  ],
+  "charging station": [
+    "Electric Vehicle Charging Station"
+  ],
+  "smart grid": [
+    "Smart Grid"
+  ],
+  "energy storage": [
+    "Energy Storage"
+  ],
+  "LED light": [
+    "LED Light"
+  ],
+  "insulation": [
+    "Insulation"
+  ],
+  "heat pump": [
+    "Heat Pump"
+  ],
+  "solar farm": [
+    "Solar Power Station"
+  ],
+  "wind farm": [
+    "wind turbine"
+  ],
+  "offshore wind": [
+    "Offshore Wind Farm"
+  ],
+  "dam": [
+    "Dam"
+  ],
+  "turbine": [
+    "Turbine",
+    "Engine"
+  ],
+  "fossil fuel": [
+    "Fossil Fuel"
+  ],
+  "protective": [
+    "Protection",
+    "Protective Workwear",
+    "Protective Glove",
+    "Hardhat"
+  ],
+  "hazard": [
+    "Danger",
+    "Warning Symbol",
+    "Hazard Sign",
+    "Hazardous Area Sign"
+  ],
+  "risk": [
+    "Risk",
+    "Risk Management",
+    "Risk Factor"
+  ],
+  "warning": [
+    "Warning Sign",
+    "Warning Symbol",
+    "High Voltage Sign"
+  ],
+  "danger": [
+    "Danger",
+    "Warning Sign",
+    "Warning Symbol"
+  ],
+  "emergency": [
+    "Accidents and Disasters",
+    "Emergency Services Occupation",
+    "Emergency Equipment",
+    "First Aid"
+  ],
+  "accident": [
+    "Crash",
+    "Accidents and Disasters",
+    "Work Accident"
+  ],
+  "injury": [
+    "Physical Injury",
+    "Orthopaedic Brace"
+  ],
+  "prevention": [
+    "Prevention"
+  ],
+  "compliance": [
+    "Obedience",
+    "Conformity"
+  ],
+  "regulation": [
+    "law",
+    "Rules"
+  ],
+  "inspection": [
+    "Examining",
+    "Quality Control"
+  ],
+  "training": [
+    "Sports Training",
+    "Education Training Class",
+    "Military Training"
+  ],
+  "awareness": [
+    "Alertness",
+    "Social Awareness Symbol"
+  ],
+  "helmet": [
+    "Helmet",
+    "Work Helmet",
+    "Sports Helmet"
+  ],
+  "vest": [
+    "Waistcoat"
+  ],
+  "glove": [
+    "Glove",
+    "Protective Glove",
+    "Laboratory Glove Box"
+  ],
+  "goggles": [
+    "Protective Eyewear",
+    "Swimming Goggles",
+    "Ski Goggles"
+  ],
+  "harness": [
+    "Safety Harness",
+    "Animal Harness"
+  ],
+  "boots": [
+    "Boot",
+    "Snow Boot"
+  ],
+  "mask": [
+    "Mask - Disguise",
+    "protective face mask",
+    "Scuba Mask"
+  ],
+  "shield": [
+    "Shield",
+    "Riot Shield"
+  ],
+  "reflective": [
+    "Reflective Clothing",
+    "Reflection"
+  ],
+  "uniform": [
+    "Uniform",
+    "Sports Uniform"
+  ],
+  "workwear": [
+    "Protective Workwear"
+  ],
+  "occupation": [
+    "Occupation",
+    "Occupational Safety And Health",
+    "Various Occupations"
+  ],
+  "supervisor": [
+    "Manager"
+  ],
+  "industrial": [
+    "Industrial Building",
+    "Industrial Equipment",
+    "Factory"
+  ],
+  "mining": [
+    "Mining - Natural Resources",
+    "Open-pit Mine",
+    "Mine Shaft"
+  ],
+  "firefighter": [
+    "Firefighter",
+    "Fire Protection Suit"
+  ],
+  "rescue": [
+    "rescue",
+    "Rescue Worker",
+    "CPR"
+  ],
+  "job": [
+    "Occupation",
+    "Employment And Labor",
+    "Recruitment",
+    "Unemployment"
+  ],
+  "work": [
+    "Occupation",
+    "Working",
+    "Place of Work",
+    "Professional Occupation"
+  ],
+  "career": [
+    "Occupation",
+    "Employment And Labor",
+    "Job Interview",
+    "Ladder of Success"
+  ],
+  "employment": [
+    "Employment And Labor",
+    "Recruitment",
+    "Job Interview",
+    "Help Wanted Sign"
+  ],
+  "workforce": [
+    "Occupation",
+    "Working",
+    "Employee Retention"
+  ],
+  "labor": [
+    "Employment And Labor",
+    "blue-collar worker",
+    "Effort"
+  ],
+  "manual worker": [
+    "blue-collar worker"
+  ],
+  "blue collar": [
+    "blue-collar worker",
+    "Working Class"
+  ],
+  "white collar": [
+    "White Collar Worker",
+    "White Collar Crime"
+  ],
+  "apprentice": [
+    "Trainee"
+  ],
+  "intern": [
+    "Trainee",
+    "Medical Student"
+  ],
+  "factory": [
+    "Factory",
+    "Manufacturing Occupation",
+    "Production Line"
+  ],
+  "plant": [
+    "Factory",
+    "Plant"
+  ],
+  "workshop": [
+    "Workshop",
+    "Education Training Class"
+  ],
+  "production": [
+    "Manufacturing",
+    "Production Line",
+    "Production Line Worker"
+  ],
+  "assembly": [
+    "Meeting",
+    "Production Line",
+    "Factory"
+  ],
+  "operation": [
+    "Surgery",
+    "Business Strategy",
+    "Operating Room"
+  ],
+  "commerce": [
+    "business",
+    "retail"
+  ],
+  "trade": [
+    "Trading",
+    "Tradeshow",
+    "Stock Market and Exchange"
+  ],
+  "enterprise": [
+    "business",
+    "Initiative",
+    "Enterprise Resource Planning"
+  ],
+  "briefing": [
+    "Seminar"
+  ],
+  "brainstorming": [
+    "Brainstorming"
+  ],
+  "negotiation": [
+    "Discussion",
+    "Agreement"
+  ],
+  "deadline": [
+    "Deadline"
+  ],
+  "shift": [
+    "Shift Work",
+    "Change"
+  ],
+  "tools": [
+    "Work Tool",
+    "Gardening Equipment"
+  ],
+  "colleague": [
+    "colleague"
+  ],
+  "coworker": [
+    "Coworker"
+  ],
+  "team leader": [
+    "Manager"
+  ],
+  "productivity": [
+    "Efficiency"
+  ],
+  "efficiency": [
+    "Efficiency"
+  ],
+  "performance": [
+    "Performance"
+  ],
+  "goal": [
+    "Aspirations",
+    "Planning",
+    "Incentive"
+  ],
+  "target": [
+    "Business Target",
+    "Aiming",
+    "Deadline"
+  ],
+  "contractor": [
+    "Building Contractor"
+  ],
+  "subcontractor": [
+    "Subcontractor"
+  ],
+  "freelancer": [
+    "Freelance Work"
+  ],
+  "distribution": [
+    "Distribution Warehouse",
+    "Giving",
+    "Food Distribution"
+  ],
+  "renovation": [
+    "Renovation"
+  ],
+  "demolition": [
+    "Demolishing",
+    "Construction Site",
+    "Wrecking Ball"
+  ],
+  "foreman": [
+    "Foreperson"
+  ],
+  "project manager": [
+    "Project Manager"
+  ],
+  "expertise": [
+    "Expertise"
+  ],
+  "skill": [
+    "Skill",
+    "Expertise",
+    "Upskilling"
+  ],
+  "knowledge": [
+    "Expertise",
+    "Wisdom"
+  ],
+  "experience": [
+    "Expertise",
+    "Wisdom",
+    "Skill"
+  ],
+  "strategy": [
+    "Strategy"
+  ],
+  "solution": [
+    "Solution"
+  ],
+  "problem solving": [
+    "Solution"
+  ],
+  "journey": [
+    "Journey",
+    "Travel Destinations"
+  ],
+  "trip": [
+    "Vacations",
+    "Journey",
+    "Road Trip"
+  ],
+  "tour": [
+    "Tourism",
+    "Travel Destinations",
+    "Tourist",
+    "Journey"
+  ],
+  "destination": [
+    "Travel Destinations",
+    "Arrival"
+  ],
+  "backpacker": [
+    "Backpacker",
+    "Hiking",
+    "Hostel"
+  ],
+  "explorer": [
+    "Explorer"
+  ],
+  "luggage": [
+    "Luggage",
+    "Luggage Tag",
+    "Luggage Cart",
+    "Baggage Claim"
+  ],
+  "suitcase": [
+    "Suitcase",
+    "Luggage Cart"
+  ],
+  "passport": [
+    "Passport",
+    "Customs",
+    "Passport Stamp"
+  ],
+  "visa": [
+    "Emigration and Immigration",
+    "Passport Stamp"
+  ],
+  "ticket": [
+    "Ticket",
+    "Airport Check-in Counter"
+  ],
+  "hotel": [
+    "Hotel",
+    "Tourist Resort",
+    "Hotel Room",
+    "Hotel Reception"
+  ],
+  "hostel": [
+    "Hostel"
+  ],
+  "resort": [
+    "Tourist Resort",
+    "Resort Swimming Pool"
+  ],
+  "accommodation": [
+    "Hotel"
+  ],
+  "flight": [
+    "Flying",
+    "Commercial Airplane",
+    "Cockpit",
+    "Cabin Crew"
+  ],
+  "cruise": [
+    "Cruise - Vacation",
+    "Cruise Ship",
+    "Passenger Craft"
+  ],
+  "road trip": [
+    "Road Trip"
+  ],
+  "adventure": [
+    "Adventure",
+    "Extreme Sports"
+  ],
+  "map": [
+    "Map",
+    "World Map"
+  ],
+  "navigation": [
+    "Navigational Equipment",
+    "Navigational Compass"
+  ],
+  "guide": [
+    "Guidance",
+    "Guide - Occupation",
+    "Guidebook"
+  ],
+  "itinerary": [
+    "Arrival Departure Board"
+  ],
+  "sun": [
+    "Sun",
+    "Sunlight",
+    "Sunset",
+    "Sunbeam"
+  ],
+  "sunshine": [
+    "Sunlight"
+  ],
+  "sunlight": [
+    "Sunlight",
+    "Sunbeam"
+  ],
+  "wave": [
+    "Wave - Water",
+    "Breaking Wave"
+  ],
+  "swimwear": [
+    "Swimwear"
+  ],
+  "bikini": [
+    "Bikini",
+    "Bikini Top",
+    "Bikini Bottom"
+  ],
+  "sunscreen": [
+    "Suntan Lotion"
+  ],
+  "sunglasses": [
+    "Sunglasses"
+  ],
+  "pool": [
+    "Swimming Pool"
+  ],
+  "swim": [
+    "Swimming",
+    "Swimming Pool",
+    "Swimming Goggles"
+  ],
+  "sailing": [
+    "Sailing",
+    "Sailboat",
+    "Yacht"
+  ],
+  "picnic": [
+    "Picnic",
+    "Picnic Basket",
+    "Picnic Blanket"
+  ],
+  "barbecue": [
+    "Barbecue - Meal",
+    "Barbecue Grill",
+    "Barbecue - Social Gathering"
+  ],
+  "outdoor dining": [
+    "Outdoor Dining"
+  ],
+  "festival": [
+    "Music Festival",
+    "Traditional Festival"
+  ],
+  "ice cream": [
+    "Ice Cream",
+    "Ice Cream Cone",
+    "Ice Cream Parlor"
+  ],
+  "cold drink": [
+    "Cold Drink"
+  ],
+  "watermelon": [
+    "Watermelon"
+  ],
+  "urban": [
+    "City Life",
+    "Cityscape",
+    "Urban Skyline",
+    "City Street"
+  ],
+  "downtown": [
+    "Downtown District"
+  ],
+  "suburb": [
+    "Suburb",
+    "Urban Sprawl"
+  ],
+  "neighborhood": [
+    "Residential District",
+    "Community"
+  ],
+  "street life": [
+    "City Life"
+  ],
+  "pedestrian": [
+    "Pedestrian",
+    "Crosswalk",
+    "Pedestrian Zone"
+  ],
+  "crowd": [
+    "Crowd of People",
+    "Crowded"
+  ],
+  "rush hour": [
+    "Rush Hour",
+    "Commuter"
+  ],
+  "commute": [
+    "Commuter",
+    "Rush Hour"
+  ],
+  "public transport": [
+    "Public Transportation"
+  ],
+  "subway": [
+    "Subway",
+    "Subway Station",
+    "Subway Train"
+  ],
+  "bus": [
+    "Bus"
+  ],
+  "taxi": [
+    "Taxi",
+    "Taxi Driver"
+  ],
+  "skyline": [
+    "Urban Skyline",
+    "Town Skyline"
+  ],
+  "skyscraper": [
+    "Skyscraper"
+  ],
+  "plaza": [
+    "Town Square"
+  ],
+  "square": [
+    "Town Square"
+  ],
+  "fountain": [
+    "Fountain"
+  ],
+  "cafe": [
+    "Cafe",
+    "Cafe Culture"
+  ],
+  "restaurant": [
+    "Restaurant",
+    "Food Service Occupation",
+    "Commercial Kitchen"
+  ],
+  "bar": [
+    "Bar - Drink Establishment",
+    "Bar Counter"
+  ],
+  "nightlife": [
+    "Nightlife"
+  ],
+  "graffiti": [
+    "Graffiti"
+  ],
+  "mural": [
+    "Mural"
+  ],
+  "art": [
+    "Arts Culture and Entertainment",
+    "Art",
+    "Art Product"
+  ],
+  "culture": [
+    "Arts Culture and Entertainment",
+    "Cultures"
+  ],
+  "museum": [
+    "Museum",
+    "Art Museum"
+  ],
+  "school": [
+    "Education",
+    "School Building",
+    "Student",
+    "School Children",
+    "Backpack"
+  ],
+  "pupil": [
+    "School Children"
+  ],
+  "lesson": [
+    "Learning",
+    "Classroom"
+  ],
+  "exam": [
+    "Educational Exam",
+    "Medical Exam",
+    "Examining"
+  ],
+  "diploma": [
+    "Diploma"
+  ],
+  "chalkboard": [
+    "Chalkboard - Visual Aid"
+  ],
+  "textbook": [
+    "Textbook"
+  ],
+  "pencil": [
+    "Pencil",
+    "Pencil Drawing",
+    "Pencil Case"
+  ],
+  "backpack": [
+    "Backpack",
+    "Hiking",
+    "Backpacker"
+  ],
+  "kindergarten": [
+    "Preschool",
+    "4-5 Years"
+  ],
+  "preschool": [
+    "Preschool",
+    "Preschool Student"
+  ],
+  "university": [
+    "University",
+    "University Student",
+    "Campus"
+  ],
+  "graduate": [
+    "Graduation",
+    "Mortarboard"
+  ],
+  "promotion": [
+    "Promotion - Employment",
+    "Ladder of Success",
+    "Marketing"
+  ],
+  "interview": [
+    "Job Interview",
+    "Interview - Event"
+  ],
+  "resume": [
+    "Résumé"
+  ],
+  "hire": [
+    "Recruitment",
+    "Help Wanted Sign"
+  ],
+  "mentor": [
+    "Instructor",
+    "Mentorship"
+  ],
+  "coaching": [
+    "Coach",
+    "Teaching",
+    "Mentorship"
+  ],
+  "management": [
+    "Manager",
+    "Leadership",
+    "Organization"
+  ],
+  "camping": [
+    "Camping",
+    "Campfire"
+  ],
+  "tent": [
+    "Tent",
+    "Camping"
+  ],
+  "campfire": [
+    "Campfire"
+  ],
+  "sleeping bag": [
+    "Sleeping Bag"
+  ],
+  "trail": [
+    "Footpath",
+    "Dirt Road"
+  ],
+  "compass": [
+    "Navigational Compass"
+  ],
+  "bonfire": [
+    "Bonfire"
+  ],
+  "diving": [
+    "Underwater Diving",
+    "Diving Equipment",
+    "Snorkel",
+    "Wetsuit"
+  ],
+  "scuba": [
+    "Scuba Diving",
+    "Scuba Mask",
+    "Aqualung - Diving Equipment"
+  ],
+  "snorkel": [
+    "Snorkel",
+    "Snorkeling",
+    "Scuba Mask"
+  ],
+  "wetsuit": [
+    "Wetsuit"
+  ],
+  "coral": [
+    "Coral - Cnidarian",
+    "Reef",
+    "Lagoon"
+  ],
+  "reef": [
+    "Reef",
+    "Hard Coral"
+  ],
+  "underwater": [
+    "Underwater",
+    "Sea Life",
+    "Underwater Diving"
+  ],
+  "sea creature": [
+    "Sea Life"
+  ],
+  "tractor": [
+    "Tractor"
+  ],
+  "crop": [
+    "Crop - Plant",
+    "Silo"
+  ],
+  "harvest": [
+    "Harvesting",
+    "Combine Harvester",
+    "Bale"
+  ],
+  "irrigation": [
+    "Irrigation Equipment",
+    "Agricultural Sprinkler"
+  ],
+  "barn": [
+    "Barn",
+    "Poultry"
+  ],
+  "livestock": [
+    "Livestock",
+    "Herder"
+  ],
+  "greenhouse": [
+    "Greenhouse"
+  ],
+  "vineyard": [
+    "Vineyard"
+  ],
+  "wallpaper": [
+    "Wallpaper - Decor"
+  ],
+  "tile": [
+    "Tile",
+    "Tiled Floor",
+    "Roof Tile"
+  ],
+  "plaster": [
+    "Plaster",
+    "Plasterer",
+    "Drywall"
+  ],
+  "plumber": [
+    "Plumber"
+  ],
+  "ladder": [
+    "Ladder",
+    "Ladder of Success"
+  ],
+  "decoration": [
+    "Decoration"
+  ],
+  "candle": [
+    "Candle",
+    "Candlelight",
+    "Candlestick Holder"
+  ],
+  "shelf": [
+    "Shelf"
+  ],
+  "curtain": [
+    "Curtain",
+    "Curtain Wall - Facade"
+  ],
+  "lamp": [
+    "electric lamp",
+    "Lamp Shade"
+  ],
+  "vase": [
+    "Vase"
+  ],
+  "still life": [
+    "Still Life"
+  ],
+  "product": [
+    "Merchandise",
+    "Marketing",
+    "Packaging"
+  ],
+  "arrangement": [
+    "Arrangement",
+    "Flower Arrangement"
+  ],
+  "composition": [
+    "Composition",
+    "Close-up"
+  ],
+  "lifestyle": [
+    "Lifestyles"
+  ],
+  "candid": [
+    "Candid"
+  ],
+  "wildlife": [
+    "Animal Wildlife",
+    "Wildlife Reserve",
+    "Wildlife Conservation"
+  ],
+  "habitat": [
+    "Nature",
+    "Animals In The Wild"
+  ],
+  "predator": [
+    "Animals Hunting"
+  ],
+  "prey": [
+    "Animals Hunting"
+  ],
+  "bird": [
+    "Bird",
+    "Bird of Prey",
+    "Bird Watching",
+    "Bird's Nest"
+  ],
+  "eagle": [
+    "Eagle - Bird"
+  ],
+  "wolf": [
+    "Wolf"
+  ],
+  "bear": [
+    "Bear",
+    "Bear Cub"
+  ],
+  "deer": [
+    "Deer",
+    "Fawn - Young Deer"
+  ],
+  "fox": [
+    "Fox"
+  ],
+  "horse": [
+    "Horse",
+    "Horseback Riding",
+    "Ranch"
+  ],
+  "cow": [
+    "Cow",
+    "Domestic Cattle",
+    "Milk"
+  ],
+  "sheep": [
+    "Sheep",
+    "Shepherd",
+    "Sheep Farm"
+  ],
+  "pig": [
+    "Pig",
+    "Piglet"
+  ],
+  "goat": [
+    "Goat",
+    "Young Goat - Kid"
+  ],
+  "chicken": [
+    "Chicken - Bird",
+    "Animal Egg",
+    "Chicken Coop"
+  ],
+  "farm animal": [
+    "Livestock"
+  ],
+  "pet": [
+    "Pets",
+    "Pet Equipment"
+  ],
+  "domestic": [
+    "Domestic Animals",
+    "Domestic Life",
+    "Household Equipment"
+  ],
+  "wild": [
+    "Animals In The Wild",
+    "Animal Wildlife",
+    "Wilderness Area"
+  ],
+  "soil": [
+    "Dirt"
+  ],
+  "seed": [
+    "Seed",
+    "Seedling",
+    "Sowing"
+  ],
+  "fertilizer": [
+    "Fertilizer"
+  ],
+  "orchard": [
+    "Orchard"
+  ],
+  "pasture": [
+    "Pasture"
+  ],
+  "red": [
+    "Red"
+  ],
+  "blue": [
+    "Blue",
+    "Blue Background"
+  ],
+  "green": [
+    "Green Color",
+    "Environmental Conservation",
+    "Lush Foliage"
+  ],
+  "yellow": [
+    "Yellow",
+    "Yellow Background"
+  ],
+  "black": [
+    "Black Color",
+    "Black Background"
+  ],
+  "white": [
+    "White Color",
+    "White Background"
+  ],
+  "orange": [
+    "Orange Color",
+    "Orange - Fruit"
+  ],
+  "purple": [
+    "Purple",
+    "Purple Background"
+  ],
+  "pink": [
+    "Pink Color",
+    "Pink Background"
+  ],
+  "gray": [
+    "Gray color",
+    "Grayscale",
+    "Gray Background"
+  ],
+  "brown": [
+    "Brown",
+    "Brown Hair",
+    "Brown Background"
+  ],
+  "golden": [
+    "Gold Colored",
+    "Gold - Metal"
+  ],
+  "colorful": [
+    "Multi Colored",
+    "Multi-Colored Background"
+  ],
+  "bright": [
+    "Bright",
+    "Vibrant Color",
+    "Brightly Lit",
+    "Illuminated"
+  ],
+  "dark": [
+    "dark"
+  ],
+  "vivid": [
+    "Multi Colored",
+    "Vibrant Color",
+    "Saturated Color"
+  ],
+  "pastel": [
+    "Pastel Colored",
+    "Pastel Drawing"
+  ],
+  "afternoon": [
+    "Afternoon",
+    "Afternoon Tea"
+  ],
+  "evening": [
+    "Dusk",
+    "Evening Gown",
+    "Evening Wear"
+  ],
+  "night": [
+    "Night",
+    "Dusk",
+    "Nightlife"
+  ],
+  "dawn": [
+    "Dawn"
+  ],
+  "dusk": [
+    "Dusk"
+  ],
+  "one person": [
+    "One Person"
+  ],
+  "two people": [
+    "Two People"
+  ],
+  "three people": [
+    "Three People"
+  ],
+  "pair": [
+    "Pair"
+  ],
+  "single": [
+    "One Person",
+    "Single Object",
+    "One Animal"
+  ],
+  "multiple": [
+    "Variation",
+    "Group Of People",
+    "Multi Colored"
+  ],
+  "stress": [
+    "Emotional Stress",
+    "Physical Pressure",
+    "Stress Ball"
+  ],
+  "anxiety": [
+    "Anxiety"
+  ],
+  "depression": [
+    "Depressive Disorder",
+    "Economic Depression"
+  ],
+  "joy": [
+    "Joy"
+  ],
+  "love": [
+    "Love - Emotion",
+    "Romance",
+    "Heart Shape",
+    "Falling in Love"
+  ],
+  "hope": [
+    "Hope - Concept"
+  ],
+  "fear": [
+    "Fear",
+    "Horror"
+  ],
+  "trust": [
+    "Trust"
+  ],
+  "anger": [
+    "Anger"
+  ],
+  "surprise": [
+    "Surprise"
+  ],
+  "happiness": [
+    "Happiness"
+  ],
+  "sadness": [
+    "Sadness"
+  ],
+  "loneliness": [
+    "Loneliness"
+  ],
+  "excitement": [
+    "Excitement"
+  ],
+  "calm": [
+    "Tranquility",
+    "Calm Water"
+  ],
+  "peace": [
+    "Tranquility",
+    "Unity",
+    "Harmony",
+    "Zen-like"
+  ],
+  "passion": [
+    "Passion",
+    "Passion Fruit"
+  ],
+  "pride": [
+    "Pride"
+  ],
+  "artificial intelligence": [
+    "Artificial Intelligence"
+  ],
+  "robot": [
+    "robot",
+    "Robotic Arm",
+    "Cyborg",
+    "Robotic Surgery"
+  ],
+  "drone": [
+    "Drone",
+    "Drone Point of View",
+    "Drone Pilot"
+  ],
+  "virtual reality": [
+    "virtual reality",
+    "Virtual Reality Simulator"
+  ],
+  "augmented reality": [
+    "Augmented Reality",
+    "Smart Glasses - Eyewear"
+  ],
+  "cloud computing": [
+    "Cloud Computing",
+    "Cloud Security"
+  ],
+  "data": [
+    "Data",
+    "Technology",
+    "Cloud Computing",
+    "Network Security"
+  ],
+  "network": [
+    "Computer Network",
+    "Network Server",
+    "Network Security"
+  ],
+  "server": [
+    "Network Server",
+    "Server Room"
+  ],
+  "software": [
+    "Computer Software",
+    "Software Development"
+  ],
+  "coding": [
+    "Coding"
+  ],
+  "programming": [
+    "Computer Language"
+  ],
+  "cybersecurity": [
+    "Network Security"
+  ],
+  "blockchain": [
+    "Blockchain"
+  ],
+  "automation": [
+    "Automated"
+  ],
+  "machine learning": [
+    "Machine Learning"
+  ],
+  "bread": [
+    "Bread",
+    "Loaf of Bread",
+    "Baking Bread"
+  ],
+  "meat": [
+    "Meat",
+    "Meat Dish",
+    "Meatball"
+  ],
+  "vegetable": [
+    "Vegetable",
+    "Vegetable Garden",
+    "Vegetable Soup"
+  ],
+  "fruit": [
+    "Fruit",
+    "Fruit Tree",
+    "Fruit Juice"
+  ],
+  "salad": [
+    "Salad",
+    "Green Salad",
+    "Salad Bowl"
+  ],
+  "soup": [
+    "Soup",
+    "Soup Bowl"
+  ],
+  "pasta": [
+    "Pasta",
+    "Pasta Tubes"
+  ],
+  "rice": [
+    "Rice - Food Staple",
+    "Rice Paddy"
+  ],
+  "seafood": [
+    "Seafood",
+    "Fish Market"
+  ],
+  "dessert": [
+    "Dessert - Sweet Food",
+    "Dessert Topping"
+  ],
+  "cake": [
+    "Cake",
+    "Slice of Cake",
+    "making a cake"
+  ],
+  "chocolate": [
+    "Chocolate",
+    "Chocolate Bar",
+    "Chocolate Cake"
+  ],
+  "cheese": [
+    "Cheese",
+    "Goat Cheese",
+    "Cheese Board"
+  ],
+  "egg": [
+    "Egg - Food",
+    "Animal Egg",
+    "Egg Yolk"
+  ],
+  "milk": [
+    "Milk",
+    "Dairy Product",
+    "Latte"
+  ],
+  "butter": [
+    "Butter",
+    "Buttercream"
+  ],
+  "oil": [
+    "Cooking Oil",
+    "Essential Oil",
+    "Crude Oil"
+  ],
+  "spice": [
+    "Spice",
+    "Spice Store"
+  ],
+  "herb": [
+    "Herb",
+    "Herbal Medicine",
+    "Herbal Tea"
+  ],
+  "juice": [
+    "Juice - Drink",
+    "Juice Bar"
+  ],
+  "wine": [
+    "Wine",
+    "Wineglass",
+    "Winery",
+    "wine tasting"
+  ],
+  "beer": [
+    "Beer - Alcohol",
+    "Beer Glass",
+    "Brewery"
+  ],
+  "cocktail": [
+    "Cocktail",
+    "Cocktail Party",
+    "Cocktail Shaker"
+  ],
+  "smoothie": [
+    "Smoothie"
+  ],
+  "breakfast": [
+    "Breakfast",
+    "Morning"
+  ],
+  "lunch": [
+    "Lunch",
+    "Lunch Break",
+    "Business Lunch"
+  ],
+  "dinner": [
+    "Dinner",
+    "Dining Table",
+    "Dinner Party"
+  ],
+  "snack": [
+    "Snack"
+  ],
+  "meal": [
+    "Meal",
+    "Preparing Food"
+  ],
+  "suit": [
+    "Suit",
+    "Full Suit",
+    "Waistcoat"
+  ],
+  "dress": [
+    "Dress",
+    "Formalwear",
+    "Sleeveless Dress"
+  ],
+  "casual": [
+    "Casual Clothing",
+    "Smart Casual",
+    "Business Casual"
+  ],
+  "formal": [
+    "Formalwear",
+    "Formal Businesswear",
+    "Evening Gown"
+  ],
+  "jeans": [
+    "Jeans",
+    "Denim"
+  ],
+  "shirt": [
+    "Shirt",
+    "Button Down Shirt"
+  ],
+  "shoes": [
+    "Shoe",
+    "Barefoot",
+    "Shoe Store"
+  ],
+  "hat": [
+    "Hat"
+  ],
+  "glasses": [
+    "Eyeglasses",
+    "Drinking Glass",
+    "Wineglass"
+  ],
+  "accessories": [
+    "Personal Accessory"
+  ]
+}
