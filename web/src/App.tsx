@@ -1,6 +1,5 @@
 /**
  * Stock Metadata Generator — app shell.
- * Tailwind styles are in index.css (@import "tailwindcss" + @theme).
  */
 import { useCallback, useEffect, useState } from 'react';
 
@@ -8,7 +7,7 @@ import { apiEverypixels, everypixelToKeywordStrings } from './api/everypixels';
 import {
   apiKeywordsAllPlatforms,
   apiMetadata,
-  apiMetadataWithKeywords,
+  apiTranslate,
   apiTranslateUniqueKwToMap,
   applyTrMap,
   buildUniqueEnList,
@@ -24,7 +23,7 @@ import { Toolbar } from './components/Toolbar';
 import { VideoFramePickerModal } from './components/VideoFramePickerModal';
 import type { UILang } from './lib/i18n';
 import { useT } from './lib/useT';
-import { getLanguage } from './lib/languages';
+import { getLanguage, isEnglishOnly } from './lib/languages';
 import { ADOBE_MAX, ISTOCK_MAX, SHUTTER_MAX } from './lib/limits';
 import { base64JpegToFile, fileToBase64Jpeg, isVideo } from './lib/media';
 import { emptyRecord, getActiveGroqKeys } from './lib/storage';
@@ -53,11 +52,7 @@ function AppContent() {
     if (currentFileId && currentEntry && !metadataByFileId[currentFileId]) setMetadata(currentFileId, emptyRecord(currentEntry.name, settings.target_language));
   }, [currentFileId, currentEntry, metadataByFileId, setMetadata, settings.target_language]);
 
-  // Two-zone keyboard navigation (mirrors the design mockup's kbZone/KB_STOPS system).
-  // 'sidebar' zone: ↑/↓ move file selection, → enters 'content' zone.
-  // 'content' zone: ↑/↓ move between bar "stops" (title/description/tabs/keywords),
-  // ←/→ on the tabs stop switches platform, ← at the first stop returns to 'sidebar',
-  // Enter/Space/⌘C copies the focused stop's text.
+  // Key navigation logic
   useEffect(() => {
     const isFormField = () => {
       const el = document.activeElement as HTMLElement | null;
@@ -65,42 +60,10 @@ function AppContent() {
     };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isFormField()) return;
-
       const isCopy = (e.key === 'c' || e.key === 'C') && (e.metaKey || e.ctrlKey);
-      const isPaste = (e.key === 'v' || e.key === 'V') && (e.metaKey || e.ctrlKey);
       const isUndo = (e.key === 'z' || e.key === 'Z') && (e.metaKey || e.ctrlKey) && !e.shiftKey;
-
-      if (isUndo) {
-        undo();
-        e.preventDefault();
-        return;
-      }
-
+      if (isUndo) { undo(); e.preventDefault(); return; }
       if (kbZone === 'sidebar') {
-        if (isCopy && currentFileId) {
-          const record = metadataByFileId[currentFileId];
-          const hasMeta = record && (record.title_en || record.title_secondary || (record.adobe_keywords_en?.length ?? 0) > 0);
-          if (hasMeta) {
-            e.preventDefault();
-            navigator.clipboard.writeText(JSON.stringify(record));
-          }
-          return;
-        }
-        if (isPaste && currentFileId && currentEntry) {
-          e.preventDefault();
-          navigator.clipboard.readText().then((text) => {
-            try {
-              const parsed = JSON.parse(text) as unknown;
-              if (parsed && typeof parsed === 'object' && (Array.isArray((parsed as MetadataRecord).adobe_keywords_en) || 'title_en' in (parsed as MetadataRecord))) {
-                const record = parsed as MetadataRecord;
-                setMetadata(currentFileId, { ...record, file_name: currentEntry.name });
-              }
-            } catch {
-              // ignore invalid paste
-            }
-          });
-          return;
-        }
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
           e.preventDefault();
           if (files.length === 0) return;
@@ -110,34 +73,16 @@ function AppContent() {
           setCurrentFileId(files[idx].id);
           return;
         }
-        if (e.key === 'ArrowRight') {
-          e.preventDefault();
-          setKbZone('content');
-          setKbStopIndex(0);
-        }
+        if (e.key === 'ArrowRight') { e.preventDefault(); setKbZone('content'); setKbStopIndex(0); }
         return;
       }
-
-      // kbZone === 'content'
       const onTabs = KB_STOPS[kbStopIndex] === 'tabs';
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setKbStopIndex(Math.min(kbStopIndex + 1, KB_STOPS.length - 1));
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setKbStopIndex(Math.max(kbStopIndex - 1, 0));
-      } else if (e.key === 'ArrowRight' && onTabs) {
-        e.preventDefault();
-        const ti = TAB_ORDER.indexOf(activeTab);
-        setActiveTab(TAB_ORDER[(ti + 1) % TAB_ORDER.length]);
-      } else if (e.key === 'ArrowLeft' && onTabs) {
-        e.preventDefault();
-        const ti = TAB_ORDER.indexOf(activeTab);
-        setActiveTab(TAB_ORDER[(ti - 1 + TAB_ORDER.length) % TAB_ORDER.length]);
-      } else if (e.key === 'ArrowLeft' && kbStopIndex === 0) {
-        e.preventDefault();
-        setKbZone('sidebar');
-      } else if (e.key === 'Enter' || e.key === ' ' || isCopy) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setKbStopIndex(Math.min(kbStopIndex + 1, KB_STOPS.length - 1)); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); setKbStopIndex(Math.max(kbStopIndex - 1, 0)); }
+      else if (e.key === 'ArrowRight' && onTabs) { e.preventDefault(); const ti = TAB_ORDER.indexOf(activeTab); setActiveTab(TAB_ORDER[(ti + 1) % TAB_ORDER.length]); }
+      else if (e.key === 'ArrowLeft' && onTabs) { e.preventDefault(); const ti = TAB_ORDER.indexOf(activeTab); setActiveTab(TAB_ORDER[(ti - 1 + TAB_ORDER.length) % TAB_ORDER.length]); }
+      else if (e.key === 'ArrowLeft' && kbStopIndex === 0) { e.preventDefault(); setKbZone('sidebar'); }
+      else if (e.key === 'Enter' || e.key === ' ' || isCopy) {
         e.preventDefault();
         const stopId = KB_STOPS[kbStopIndex];
         if (stopId === 'tabs') return;
@@ -146,12 +91,8 @@ function AppContent() {
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [
-    files, currentFileId, currentEntry, metadataByFileId, setMetadata, setCurrentFileId, undo,
-    kbZone, kbStopIndex, setKbZone, setKbStopIndex, activeTab, setActiveTab, kbStopRegistryRef,
-  ]);
+  }, [files, currentFileId, undo, kbZone, kbStopIndex, setKbZone, setKbStopIndex, activeTab, setActiveTab, kbStopRegistryRef]);
 
-  // Move real DOM focus to the active stop whenever it changes (not just a CSS class).
   useEffect(() => {
     if (kbZone !== 'content') return;
     const stopId = KB_STOPS[kbStopIndex];
@@ -164,168 +105,147 @@ function AppContent() {
     const groqKeys = getActiveGroqKeys(settings);
     const openRouterKey = settings.openrouter_api_key?.trim();
     const lang = getLanguage(settings.target_language);
-    // Başlık/açıklama/çeviri — sadece Groq (OpenRouter'a asla düşmesin).
+    const englishOnly = isEnglishOnly(lang);
     const metaCreds: GroqOnlyCreds = { groqKeys, lang: lang.code as UILang };
-    // Keyword tamamlama — Groq önce, OpenRouter yedek.
     const kwCreds: AiCreds = { groqKeys, openRouterKey, lang: lang.code as UILang };
-    if (groqKeys.length === 0 && !openRouterKey) { setError(t('err_need_key')); return; }
     if (groqKeys.length === 0) { setError(t('err_meta_needs_groq')); return; }
+    
     const orderedEntries = files.filter((f) => selectedIds.has(f.id));
     const toProcess = orderedEntries.length > 0 ? orderedEntries : (currentEntry ? [currentEntry] : []);
-    if (toProcess.length === 0) { setError(t('err_need_file')); return; }
+    
     setError(null);
     setGenerating(true);
     setGeneratingProgress(toProcess.length > 1 ? { current: 0, total: toProcess.length } : null);
-    const everypixelWarnings: string[] = [];
-    const processedEntries: Array<{
-      entry: FileEntry;
-      meta: { title_en: string; title_secondary: string; description_en: string; description_secondary: string };
-      adobeEn: string[];
-      shutterEn: string[];
-      istockEn: string[];
-    }> = [];
+    
+    // TEMİZLİK: Eski verileri sıfırla
+    for (const entry of toProcess) {
+      setMetadata(entry.id, emptyRecord(entry.name, settings.target_language));
+    }
+
     try {
       const hintText = hint.trim();
       for (let i = 0; i < toProcess.length; i++) {
         const entry = toProcess[i];
         if (toProcess.length > 1) setGeneratingProgress({ current: i + 1, total: toProcess.length });
-        setCurrentFileId(entry.id);
+        
         const b64 = await fileToBase64Jpeg(entry.file, videoFrameByFileId[entry.id]);
         const epId = settings.everypixels_id?.trim();
         const epSecret = settings.everypixels_secret?.trim();
 
-        const fromGroqList = (groqKw: string[]) => ({
-          adobeEn: groqKw.slice(0, ADOBE_MAX),
-          shutterEn: groqKw.slice(0, SHUTTER_MAX),
-          istockEn: mapIstock(groqKw.slice(0, ISTOCK_MAX)),
-        });
-
         let meta: { title_en: string; title_secondary: string; description_en: string; description_secondary: string };
-        let adobeEn: string[];
-        let shutterEn: string[];
-        let istockEn: string[];
+        let adobeEn: string[]; let shutterEn: string[]; let istockEn: string[];
 
+        // API 1 ve API 2 Paralel Çalıştırma
         if (epId && epSecret) {
-          const getEnKeywords = async (): Promise<{ adobeEn: string[]; shutterEn: string[]; istockEn: string[] }> => {
-            try {
-              const fileForEp = isVideo(entry.file) ? base64JpegToFile(b64, 'frame.jpg') : entry.file;
-              const epResult = await apiEverypixels(fileForEp, epId, epSecret, {}, lang.code as UILang);
-              const allKw = everypixelToKeywordStrings(epResult);
-              let aEn = allKw.slice(0, ADOBE_MAX);
-              let sEn = allKw.slice(0, SHUTTER_MAX);
-              let iEn = mapIstock(allKw.slice(0, ISTOCK_MAX));
-              const needsGroq = aEn.length < ADOBE_MAX || sEn.length < SHUTTER_MAX || iEn.length < ISTOCK_MAX;
-              if (needsGroq) {
-                const groqKw = await apiKeywordsAllPlatforms(b64, kwCreds, hintText);
-                aEn = fillKeywordsToMax(aEn, ADOBE_MAX, groqKw);
-                sEn = fillKeywordsToMax(sEn, SHUTTER_MAX, groqKw);
-                iEn = fillKeywordsToMax(iEn, ISTOCK_MAX, mapIstock(groqKw));
-              }
-              return { adobeEn: aEn, shutterEn: sEn, istockEn: iEn };
-            } catch (epError) {
-              everypixelWarnings.push(
-                `${entry.name}: ${epError instanceof Error ? epError.message : t('err_everypixel_request_failed')}`
-              );
-              return fromGroqList(await apiKeywordsAllPlatforms(b64, kwCreds, hintText));
+          const epTask = async () => {
+            const fileForEp = isVideo(entry.file) ? base64JpegToFile(b64, 'frame.jpg') : entry.file;
+            const epResult = await apiEverypixels(fileForEp, epId, epSecret, {}, lang.code as UILang);
+            const allKw = everypixelToKeywordStrings(epResult);
+            let aEn = allKw.slice(0, ADOBE_MAX);
+            let sEn = allKw.slice(0, SHUTTER_MAX);
+            let iEn = mapIstock(allKw.slice(0, ISTOCK_MAX));
+            if (aEn.length < ADOBE_MAX || sEn.length < SHUTTER_MAX || iEn.length < ISTOCK_MAX) {
+              const groqKw = await apiKeywordsAllPlatforms(b64, kwCreds, hintText);
+              aEn = fillKeywordsToMax(aEn, ADOBE_MAX, groqKw);
+              sEn = fillKeywordsToMax(sEn, SHUTTER_MAX, groqKw);
+              iEn = fillKeywordsToMax(iEn, ISTOCK_MAX, mapIstock(groqKw));
             }
+            return { adobeEn: aEn, shutterEn: sEn, istockEn: iEn };
           };
-          // Metadata (title/description) and keywords don't depend on each other — running them
-          // together instead of one-after-the-other is a large chunk of "Üret" wall-clock time back.
           [meta, { adobeEn, shutterEn, istockEn }] = await Promise.all([
             apiMetadata(b64, metaCreds, hintText, lang),
-            getEnKeywords(),
+            epTask().catch(async () => {
+              const f = await apiKeywordsAllPlatforms(b64, kwCreds, hintText);
+              return { adobeEn: f.slice(0, ADOBE_MAX), shutterEn: f.slice(0, SHUTTER_MAX), istockEn: mapIstock(f.slice(0, ISTOCK_MAX)) };
+            })
           ]);
         } else {
-          const combined = await apiMetadataWithKeywords(b64, metaCreds, hintText, lang);
-          meta = combined;
-          ({ adobeEn, shutterEn, istockEn } = fromGroqList(combined.keywords));
+          const [resMeta, rawKw] = await Promise.all([
+            apiMetadata(b64, metaCreds, hintText, lang),
+            apiKeywordsAllPlatforms(b64, kwCreds, hintText),
+          ]);
+          meta = resMeta;
+          adobeEn = rawKw.slice(0, ADOBE_MAX);
+          shutterEn = rawKw.slice(0, SHUTTER_MAX);
+          istockEn = mapIstock(rawKw.slice(0, ISTOCK_MAX));
         }
-        // English fields land immediately; secondary-language fields are filled in the background below
-        // so the user isn't stuck watching a spinner for translation on top of generation.
-        const record: MetadataRecord = {
+
+        setMetadata(entry.id, {
           file_name: entry.name,
           created_at: new Date().toISOString().slice(0, 16).replace('T', ' '),
           secondary_lang: lang.code,
-          title_en: meta.title_en ?? '', title_secondary: '',
-          description_en: meta.description_en ?? '', description_secondary: '',
+          title_en: meta.title_en, title_secondary: '',
+          description_en: meta.description_en, description_secondary: '',
           adobe_keywords_en: adobeEn, adobe_keywords_secondary: [],
           shutter_keywords_en: shutterEn, shutter_keywords_secondary: [],
           istock_keywords_en: istockEn, istock_keywords_secondary: [],
-          translating: true,
-        };
-        setMetadata(entry.id, record);
-        processedEntries.push({ entry, meta, adobeEn, shutterEn, istockEn });
-      }
-      if (everypixelWarnings.length > 0) {
-        setError(t('everypixel_warning', { n: everypixelWarnings.length, msg: everypixelWarnings[0] }));
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Generation failed');
-    } finally {
-      setGenerating(false);
-      setGeneratingProgress(null);
-    }
-    // Background pass: translate secondary-language fields per entry without blocking the UI.
-    for (const { entry, meta, adobeEn, shutterEn, istockEn } of processedEntries) {
-      void (async () => {
-        try {
-          const uniqueEn = buildUniqueEnList(adobeEn, shutterEn, istockEn);
-          const secMap = await apiTranslateUniqueKwToMap(uniqueEn, metaCreds, lang);
-          updateMetadata(entry.id, {
-            title_secondary: meta.title_secondary ?? '',
-            description_secondary: meta.description_secondary ?? '',
-            adobe_keywords_secondary: applyTrMap(adobeEn, secMap),
-            shutter_keywords_secondary: applyTrMap(shutterEn, secMap),
-            istock_keywords_secondary: applyTrMap(istockEn, secMap),
-            secondary_lang: lang.code,
-            translating: false,
-          });
-        } catch {
-          updateMetadata(entry.id, { translating: false });
+          translating: !englishOnly,
+        });
+
+        if (!englishOnly) {
+          void (async () => {
+            updateMetadata(entry.id, { translating: true });
+            try {
+              const uniqueEn = buildUniqueEnList(adobeEn, shutterEn, istockEn);
+              const secMap = await apiTranslateUniqueKwToMap(uniqueEn, metaCreds, lang);
+              updateMetadata(entry.id, {
+                title_secondary: meta.title_secondary,
+                description_secondary: meta.description_secondary,
+                adobe_keywords_secondary: applyTrMap(adobeEn, secMap),
+                shutter_keywords_secondary: applyTrMap(shutterEn, secMap),
+                istock_keywords_secondary: applyTrMap(istockEn, secMap),
+                translating: false
+              });
+            } catch { updateMetadata(entry.id, { translating: false }); }
+          })();
         }
-      })();
-    }
+      }
+    } catch (e) { setError(e instanceof Error ? e.message : 'Generation failed'); }
+    finally { setGenerating(false); setGeneratingProgress(null); }
   }, [files, selectedIds, currentEntry, settings, hint, mapIstock, setMetadata, updateMetadata, setCurrentFileId, videoFrameByFileId, t]);
 
   const handleRefreshTitleOnly = useCallback(async () => {
     const groqKeys = getActiveGroqKeys(settings);
     if (groqKeys.length === 0) { setError(t('err_meta_needs_groq')); return; }
     if (!currentEntry) { setError(t('err_select_file_first')); return; }
+    
+    const currentRecord = metadataByFileId[currentFileId ?? ''];
+    const existingContext = currentRecord ? ` Previous title to avoid repeating: "${currentRecord.title_en}"` : '';
+
     setError(null);
     setRefreshingTitle(true);
     try {
       const b64 = await fileToBase64Jpeg(currentEntry.file, videoFrameByFileId[currentEntry.id]);
       const lang = getLanguage(settings.target_language);
-      const meta = await apiMetadata(b64, { groqKeys, lang: lang.code as UILang }, hint.trim(), lang);
-      updateMetadata(currentEntry.id, { title_en: meta.title_en ?? '', title_secondary: meta.title_secondary ?? '' });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('err_title_refresh_failed'));
-    } finally {
-      setRefreshingTitle(false);
-    }
-  }, [settings, currentEntry, hint, videoFrameByFileId, updateMetadata, t]);
+      const meta = await apiMetadata(b64, { groqKeys, lang: lang.code as UILang }, (hint.trim() + existingContext).trim(), lang);
+      
+      const payload: Partial<MetadataRecord> = { title_en: meta.title_en, description_en: meta.description_en };
+      
+      if (isEnglishOnly(lang)) {
+        updateMetadata(currentEntry.id, { ...payload, title_secondary: '', description_secondary: '' });
+      } else {
+        updateMetadata(currentEntry.id, { ...payload, translating: true });
+        void (async () => {
+          try {
+            const [trTitle, trDesc] = await Promise.all([
+              apiTranslate(meta.title_en, lang.code as 'tr' | 'en', { groqKeys, lang: lang.code as UILang }),
+              apiTranslate(meta.description_en, lang.code as 'tr' | 'en', { groqKeys, lang: lang.code as UILang })
+            ]);
+            updateMetadata(currentEntry.id, { title_secondary: trTitle, description_secondary: trDesc, translating: false });
+          } catch { updateMetadata(currentEntry.id, { translating: false }); }
+        })();
+      }
+    } catch (e) { setError(e instanceof Error ? e.message : t('err_title_refresh_failed')); }
+    finally { setRefreshingTitle(false); }
+  }, [settings, currentEntry, hint, metadataByFileId, currentFileId, videoFrameByFileId, updateMetadata, t]);
 
   return (
     <div className="h-screen flex flex-col bg-bg text-text">
-      <Toolbar
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed((c) => !c)}
-        search={fileSearch}
-        onSearchChange={setFileSearch}
-        onGenerate={handleGenerate}
-        generating={generating}
-        generatingProgress={generatingProgress}
-        onRefreshTitleOnly={handleRefreshTitleOnly}
-        refreshingTitle={refreshingTitle}
-        onOpenIStock={() => setIStockOpen(true)}
-        onOpenSettings={() => setSettingsOpen(true)}
-      />
+      <Toolbar collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed((c) => !c)} search={fileSearch} onSearchChange={setFileSearch} onGenerate={handleGenerate} generating={generating} generatingProgress={generatingProgress} onRefreshTitleOnly={handleRefreshTitleOnly} refreshingTitle={refreshingTitle} onOpenIStock={() => setIStockOpen(true)} onOpenSettings={() => setSettingsOpen(true)} />
       {error && <div className="px-[22px] py-2 bg-redBg text-red text-[13px] border-b border-borderSoft">{error}</div>}
       <div className="flex-1 flex min-h-0">
         <Sidebar collapsed={sidebarCollapsed} search={fileSearch} />
-        <main className="flex-1 flex flex-col min-w-0 min-h-0 bg-card">
-          <MainForm onError={setError} />
-        </main>
+        <main className="flex-1 flex flex-col min-w-0 min-h-0 bg-card"><MainForm onError={setError} /></main>
       </div>
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <IStockModal open={iStockOpen} onClose={() => setIStockOpen(false)} />
@@ -334,10 +254,4 @@ function AppContent() {
   );
 }
 
-export default function App() {
-  return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
-  );
-}
+export default function App() { return <AppProvider><AppContent /></AppProvider>; }

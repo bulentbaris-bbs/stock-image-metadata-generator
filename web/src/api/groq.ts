@@ -8,14 +8,12 @@ const GROQ_VISION_MODEL = 'qwen/qwen3.6-27b';
 const GROQ_TEXT_MODEL = 'llama-3.3-70b-versatile';
 const GROQ_REQUEST_MS = 90000;
 
-/** Groq key(s) + optional OpenRouter fallback key, threaded through every AI call. `lang` localizes error messages (defaults to Turkish). */
 export interface AiCreds {
   groqKeys: string[];
   openRouterKey?: string;
   lang?: UILang;
 }
 
-/** Groq-only — no OpenRouter field at all. Used for title/description/translation calls, which must never fall through to OpenRouter. */
 export interface GroqOnlyCreds {
   groqKeys: string[];
   lang?: UILang;
@@ -25,7 +23,6 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Serialize vision calls so we never hit Groq TPM with parallel image requests. */
 let visionQueue: Promise<unknown> = Promise.resolve();
 function enqueueVision<T>(task: () => Promise<T>): Promise<T> {
   const run = visionQueue.then(() => task());
@@ -36,7 +33,6 @@ function enqueueVision<T>(task: () => Promise<T>): Promise<T> {
   return run;
 }
 
-/** Try every Groq key in the pool first (key 1 → 2 → 3 → 4, rotating past each one on 429); fall back to OpenRouter only once the whole pool is exhausted and an OpenRouter key is set. GroqOnlyCreds (no `openRouterKey` field at all) never falls back — used for title/description/translation, which must stay Groq-only. */
 async function withOpenRouterFallback<T>(
   creds: AiCreds | GroqOnlyCreds,
   groqCall: (keys: string[]) => Promise<T>,
@@ -57,7 +53,7 @@ async function withOpenRouterFallback<T>(
       try {
         return await openRouterCall(openRouterKey);
       } catch {
-        throw e; // surface the original (more specific) Groq error
+        throw e;
       }
     }
   }
@@ -65,7 +61,6 @@ async function withOpenRouterFallback<T>(
   throw new Error(translate('err_groq_key_missing', lang));
 }
 
-/** Parse Groq's "Xs" rate-limit-reset header into milliseconds. */
 function parseResetSeconds(header: string | null): number | null {
   if (!header) return null;
   const m = /([\d.]+)s/.exec(header);
@@ -129,7 +124,7 @@ async function groqChat(body: Record<string, unknown>, keys: string[], label: st
       if (Number.isFinite(retryAfter) && retryAfter > 0) cooldownMs = retryAfter * 1000;
       else if (resetTokens || resetRequests) cooldownMs = Math.max(resetTokens ?? 0, resetRequests ?? 0);
       pool.markCooldown(key, Math.max(cooldownMs, 1000));
-      continue; // try the next key immediately, no sleep needed if others are free
+      continue;
     }
 
     throw new Error(translate('err_server_error', lang, { label, status: res.status, text: text.slice(0, 150) }));
@@ -141,7 +136,7 @@ export async function groqVision(
   b64: string,
   prompt: string,
   creds: AiCreds | GroqOnlyCreds,
-  maxTokens = 600
+  maxTokens = 800
 ): Promise<string> {
   const lang = creds.lang ?? 'tr';
   return enqueueVision(() =>
@@ -199,7 +194,10 @@ export async function groqText(
   );
 }
 
-/** Core instructions; optional REFERENCE block is prepended when hint is non-empty. */
+// ============================================================================
+// MODÜL 1: SADECE BAŞLIK VE AÇIKLAMA (GROQ API 1)
+// ============================================================================
+
 function buildMetadataInstructions(lang: SecondaryLanguage): string {
   return `You are a professional stock photo metadata expert. Analyze this image for Adobe Stock, Shutterstock, iStock.
 
@@ -233,28 +231,27 @@ Description (description_en / description_secondary) — complementary detail ON
 - Do NOT paste or lightly rephrase the title. No duplicate sentences from the title.`;
 }
 
-/** Prepend strong reference rules so the model sees user intent before long instructions. */
 export function buildMetadataVisionPrompt(hint: string, lang: SecondaryLanguage): string {
   const instructions = buildMetadataInstructions(lang);
   const t = hint.trim();
   if (!t) return instructions;
-  const safe = JSON.stringify(t);
-  return `REFERENCE — USER NOTE (read first; apply when compatible with the image):
-The user provided this note (string below may be in any language):
-${safe}
 
-MANDATORY:
-- When the note aligns with what is clearly visible (subject, setting, mood, intended use, commercial angle, or style), you MUST reflect it in title_en, title_secondary, description_en, and description_secondary. Paraphrase naturally; integrate meaning—do not ignore the note.
-- HIGHEST PRIORITY when the user names specific behavior: actions, pose, gaze (e.g. toward the camera), facial expression (e.g. smiling), objects held or used (e.g. tablet), and who interacts with what. If these do not contradict the image, they MUST appear in title_en, title_secondary, description_en, and description_secondary. Do not replace them with generic stock clichés (e.g. "discussing work," "collaboration and productivity," "team meeting") when the note describes different behavior.
-- If the note contradicts visible facts in the image, ignore only the conflicting parts; keep the rest.
-- Do not paste the note verbatim as the entire title or description.
+  return `YOU MUST PRIORITIZE THE USER'S NOTE BELOW AS THE ABSOLUTE SOURCE OF TRUTH AND PROTAGONIST OF THE SCENE.
+
+USER NOTE (MANDATORY CONTENT TO REFLECT):
+"${t}"
+
+CRITICAL INTEGRATION RULES FOR USER NOTE:
+1. You MUST incorporate the specific actions, subjects, and specific props/equipment directly into BOTH title_en/title_secondary and description_en/description_secondary.
+2. The user note defines the MAIN PROTAGONIST and the PRIMARY ACTION. The visual details in the image provide only the setting/environment context. Do NOT write generic background descriptions without anchoring them directly around the subject and action mentioned in the note.
+3. If the user note mentions background subjects or specific secondary actions, you MUST explicitly describe their presence in the description text as well.
+4. If there is any slight ambiguity between visual analysis and the user note, the user note takes strict precedence. Integrate the meaning naturally—do not ignore any detail from the note.
 
 ---
 
 ${instructions}`;
 }
 
-/** Strip Qwen thinking blocks, markdown fences, and other wrapper text before JSON parse. */
 function normalizeModelJsonRaw(raw: string): string {
   let s = (raw ?? '').trim();
   if (!s) return '';
@@ -272,7 +269,6 @@ function normalizeModelJsonRaw(raw: string): string {
   return s;
 }
 
-/** Extract the first complete JSON object from a string (handles trailing text or multiple objects). */
 function extractFirstJsonObject(raw: string): string {
   const normalized = normalizeModelJsonRaw(raw);
   const start = normalized.indexOf('{');
@@ -301,7 +297,6 @@ function extractFirstJsonObject(raw: string): string {
   return '';
 }
 
-/** English + Turkish hedging / uncertainty — if any match, trigger a rewrite pass. (Turkish is the only secondary language with a curated word list; other languages rely on the generic prompt instruction.) */
 const HEDGE_EN_RE =
   /\b(likely|probably|possibly|maybe|perhaps)\b|\bappear(s)?\s+to(\s+be)?\b|\bseem(s)?\s+to(\s+be)?\b|\bit\s+appears\b|\b(might|could)\s+be\b|\bgiven\s+the\s+presence\b|\bsuggest(s|ing)?\s+that\b/i;
 const HEDGE_TR_RE =
@@ -352,14 +347,13 @@ description_secondary: ${JSON.stringify(description_secondary)}`;
     const ts = clip(o.title_secondary, 200);
     const de = clip(o.description_en, 2000);
     const ds = clip(o.description_secondary, 2000);
-    if (!te.trim() || !ts.trim() || !de.trim() || !ds.trim()) return null;
+    if (!te.trim() || !de.trim() || !ts.trim() || !ds.trim()) return null;
     return { title_en: te, title_secondary: ts, description_en: de, description_secondary: ds };
   } catch {
     return null;
   }
 }
 
-/** Up to two Groq text passes if hedging patterns remain (vision model often ignores long bans). */
 async function refineMetadataAgainstHedging(
   creds: AiCreds,
   title_en: string,
@@ -399,15 +393,13 @@ async function fillDescriptionsFromTitles(
   lang: SecondaryLanguage,
 ): Promise<{ description_en: string; description_secondary: string } | null> {
   const ref = hint.trim()
-    ? `\nUser note (high priority; paraphrase into descriptions, do not ignore): ${JSON.stringify(hint.trim())}
-- If the note specifies actions, pose, gaze, expression, or objects held, weave those into the descriptions when not already fully covered by the titles. Do not substitute unrelated generic office or "collaboration" tropes unless the note implies them.`
+    ? `\nUser note (high priority; paraphrase into descriptions, do not ignore): ${JSON.stringify(hint.trim())}`
     : '';
   const p = `You are a microstock copywriter. Titles are fixed below. Write ONLY complementary image descriptions in English and ${lang.name}.
 
 Rules:
-- Do NOT repeat or copy the title wording. Expand on topic and content: actions, objects, equipment, relationships, setting/context, and the theme or story—details the titles do not already state. Do not lead with lighting, mood, color, or composition unless one short phrase clarifies the subject.
-- Use direct, declarative wording—no hedging (no probably, maybe, seems, likely, possibly, or their ${lang.name} equivalents). Do not start either description with hedging; do not use "given the presence of," "suggesting," or "likely" mid-sentence. Describe what is visible; if unsure of a label, use concrete general terms instead of qualifiers.
-- Avoid abstract closers like "sense of industry and productivity"—use concrete visible detail instead.
+- Do NOT repeat or copy the title wording. Expand on topic and content: actions, objects, equipment, relationships, setting/context, and the theme or story.
+- Use direct, declarative wording—no hedging.
 - Each description 220–350 characters (minimum 200, hard maximum 400). Write at least 2–3 full sentences. description_en in English, description_secondary in ${lang.name}.
 - Return ONLY valid JSON: {"description_en":"...","description_secondary":"..."}
 
@@ -429,41 +421,14 @@ title_secondary: ${titleSecondary}${ref}`;
   }
 }
 
-async function repairMetadataJsonWithText(creds: AiCreds, raw: string, withKeywords = false): Promise<string> {
+async function repairMetadataJsonWithText(creds: AiCreds, raw: string): Promise<string> {
   const snippet = normalizeModelJsonRaw(raw).slice(0, 6000);
-  const keys = withKeywords
-    ? 'title_en, title_secondary, description_en, description_secondary, keywords_en'
-    : 'title_en, title_secondary, description_en, description_secondary';
-  const kwRule = withKeywords
-    ? ' keywords_en must be one comma-separated string of 50 English microstock keywords.'
-    : '';
-  const p = `Convert the following stock-photo metadata draft into valid JSON with exactly these keys: ${keys}. All string values must be non-empty.${kwRule} Preserve meaning; fix formatting only.
+  const p = `Convert the following stock-photo metadata draft into valid JSON with exactly these keys: title_en, title_secondary, description_en, description_secondary. All string values must be non-empty. Preserve meaning; fix formatting only.
 
 Draft:
 ${snippet}`;
   const repaired = await groqText(p, creds, 1400, { jsonMode: true });
   return extractFirstJsonObject(repaired);
-}
-
-function parseKeywordsField(v: unknown): string[] {
-  if (typeof v === 'string') return parseKeywordCsv(v);
-  if (Array.isArray(v)) {
-    return v
-      .map((x) => String(x).trim())
-      .filter(Boolean)
-      .slice(0, 50);
-  }
-  return [];
-}
-
-const COMBINED_KEYWORDS_APPEND = `
-
-Also include keywords_en: ONE comma-separated string of exactly 50 English microstock keywords (unified for Adobe Stock, Shutterstock, iStock). Positions 1–10 = scene anchors; 11–50 = broader concepts. Singular form only.
-
-Your entire reply must be ONE JSON object with keys: title_en, title_secondary, description_en, description_secondary, keywords_en. No markdown, no thinking tags, no other text.`;
-
-export function buildCombinedVisionPrompt(hint: string, lang: SecondaryLanguage): string {
-  return buildMetadataVisionPrompt(hint, lang) + COMBINED_KEYWORDS_APPEND;
 }
 
 async function finalizeMetadataRecord(
@@ -489,38 +454,7 @@ async function finalizeMetadataRecord(
   return refined;
 }
 
-export async function apiMetadataWithKeywords(
-  b64: string,
-  creds: AiCreds,
-  hint: string,
-  lang: SecondaryLanguage
-): Promise<{
-  title_en: string;
-  title_secondary: string;
-  description_en: string;
-  description_secondary: string;
-  keywords: string[];
-}> {
-  const prompt = buildCombinedVisionPrompt(hint, lang);
-  const raw = await groqVision(b64, prompt, creds, 2048);
-  let jsonStr = extractFirstJsonObject(raw);
-  if (!jsonStr && raw.trim()) {
-    jsonStr = await repairMetadataJsonWithText(creds, raw, true);
-  }
-  if (!jsonStr) {
-    const preview = normalizeModelJsonRaw(raw).slice(0, 120);
-    throw new Error(translate('err_json_not_found', creds.lang ?? 'tr', { preview: preview ? ` (${preview}…)` : '' }));
-  }
-  try {
-    const o = JSON.parse(jsonStr) as Record<string, unknown>;
-    const meta = await finalizeMetadataRecord(creds, hint, o, lang);
-    const keywords = parseKeywordsField(o.keywords_en);
-    return { ...meta, keywords };
-  } catch {
-    throw new Error(translate('err_json_parse_failed', creds.lang ?? 'tr'));
-  }
-}
-
+/** Sadece Başlık ve Açıklama Üretimi (Groq API 1) */
 export async function apiMetadata(
   b64: string,
   creds: AiCreds,
@@ -533,7 +467,7 @@ export async function apiMetadata(
   const raw = await groqVision(b64, prompt + jsonRetrySuffix, creds, 2048);
   let jsonStr = extractFirstJsonObject(raw);
   if (!jsonStr && raw.trim()) {
-    jsonStr = await repairMetadataJsonWithText(creds, raw, false);
+    jsonStr = await repairMetadataJsonWithText(creds, raw);
   }
   if (!jsonStr) {
     const preview = normalizeModelJsonRaw(raw).slice(0, 120);
@@ -547,6 +481,10 @@ export async function apiMetadata(
   }
 }
 
+// ============================================================================
+// MODÜL 2: SADECE ANAHTAR KELİME ÜRETİMİ VE TAMAMLAMA (GROQ API 2)
+// ============================================================================
+
 const KEYWORDS_BY_PLATFORM: Record<string, string> = {
   adobe: 'Adobe Stock (max 49 keywords, broad to specific)',
   shutterstock: 'Shutterstock (max 50 keywords, high commercial value)',
@@ -555,87 +493,85 @@ const KEYWORDS_BY_PLATFORM: Record<string, string> = {
 
 const KEYWORDS_PROMPT = `You are a microstock SEO expert. Generate optimized English keywords for {platform}.{hint}
 
-First, interpret the image as a story in your mind only (who, what, why, when, where, concept). Do NOT output this story or any explanation—use it only internally to choose keywords.
+First, interpret the image for key elements: human subjects, location/setting, events/actions, objects, concepts, and industries.
 
-Two-tier list (critical for ranking and automation):
-- Keywords 1–10 (FIRST in the comma-separated list): Scene anchors — highest commercial value. Specific activity, place/region or sea if visible, main subject, equipment, setting, industry. Avoid vague filler in positions 1–10.
-- Keywords 11–50: Broader conceptual / thematic terms (mood, season, travel, compliance, freedom, discovery, risk, vacation, etc.) that buyers still search. Do not repeat the same wording as 1–10; add new angles.
+Three-tier structure (critical for ranking and commercial sales):
+- Keywords 1–10 (Scene Anchors & User Note Terms): Extract exact concepts from the User Note (if provided) as top keywords (e.g. worker, forklift, warehouse, shelf, carton, colleague, blue collar). Name main visible subjects, specific activities, gear, and place.
+- Keywords 11–34 (Broad Descriptive Context): Environmental terms, tools, relationships, secondary actions, lighting, and composition.
+- Keywords 35–50 (High-Value Commercial & Abstract Concepts): MANDATORY commercial search terms related to the theme (e.g., occupational safety, supply chain, logistics, efficiency, business management, workplace wellness, industrial concept).
 
-Keyword rules (follow strictly):
-- Order strictly: positions 1–10 = anchors; 11–50 = conceptual expansion. Adobe Stock and Getty rank early positions higher.
-- Specific to general: (1) Specific subject/activity, (2) Place/setting/industry, (3) Objects/gear, (4) Then concepts/themes.
-- Use singular form only; do not add plural variants (e.g. "dog" not "dogs") to save the keyword limit.
-- Include conceptual tags that reflect the mood or message in positions 11–50 (e.g. discovery, compliance, freedom).
-- Only tag what is clearly visible and central to the image; do not add small background objects or elements that are not the main subject.
-- Human subjects (when people are a main subject): Include stock-relevant descriptors buyers search for—man, woman, boy, girl, teenager, young adult, adult, middle age, senior—when gender or broad age band is reasonably clear from the image (face, body, clothing, hair, pose, context). If sex is unclear, use person or people instead of guessing. Do not invent fine-grained demographics or ethnicity not supported by visible evidence. Prefer including at least one such term when a person clearly anchors the scene (often in positions 1–10 alongside activity/setting, or early in 11–50 without duplicating anchors).
-- Every entry must be a short keyword or keyword phrase (1–4 words), never a sentence. NEVER describe image layout, composition, or grid position (e.g. "top left", "bottom right", "middle center", "close up of the face") as a keyword — those are not searchable stock terms.
-- iStock/Getty controlled-vocabulary fit (this same list is also used for iStock): prefer plain, moderation-safe terms Getty accepts. Avoid brand names, product names, and recognizable trademarks/logos unless clearly editorial and central to the image. Avoid slang, invented compound words, or overly niche jargon — use the plain term a buyer would actually search (e.g. "smartphone" not "handheld device thingy").
+Rules (follow strictly):
+- Order strictly: positions 1–10 = anchors & user note terms; 11–34 = context; 35–50 = commercial/abstract concepts.
+- Use singular form only (e.g. "dog" not "dogs").
+- Every entry must be a short keyword or keyword phrase (1–3 words max), NEVER a sentence.
+- VARIETY IS MANDATORY: Do NOT list repetitive synonyms of the same object. Pick 1 or 2 best terms for an object and expand into human presence, setting, mood, action, and industry.
 
-Also consider: buyer trends (2024-2025), commercial use (advertising, editorial, web, print), emotions, technical aspects, location/demographics if visible.
-
-Output format (critical): Your response must be exactly one line of comma-separated keywords — bare terms only. No introductory phrase (e.g. no "Here are the keywords:"), no sentences, no bullet points, no story text, no layout/composition labels, no closing remarks about the list itself (e.g. no "high-value keywords"). Do NOT annotate any entry with its own explanation in parentheses (e.g. write "fire extinguisher", not "fire extinguisher (main object)"; write "hand", not "hand (main subject)") — output the term alone, never the term plus your reasoning for picking it. Example: freediving, underwater, Halkidiki, Greece, marine life, Aegean sea, clear water, diving, adventure, action camera, discovery, extreme sport, nature, summer, freedom, vacation, travel, deep. Generate exactly 50 keywords.
-
-You MUST output exactly 50 comma-separated keywords. If you run out of obvious keywords, add related concepts, settings, emotions, colors, and buyer use cases until you reach exactly 50. Do not stop before 50.`;
+Output format (critical): Your response must be exactly one line of comma-separated keywords — bare terms only. No introductory phrase, no sentences, no bullet points. Generate exactly 50 keywords.`;
 
 const KEYWORDS_ALL_PLATFORMS =
   'Adobe Stock, Shutterstock, and iStock/Getty (one unified list of 50 English keywords optimized for all three microstock platforms)';
 
-/** Position/layout narration the model sometimes emits instead of a real keyword (e.g. "Bottom left: Close up of the face"). */
 const LAYOUT_LABEL_RE = /\b(top|bottom|middle|center)\s+(left|right|center)\b|\bclose[\s-]?up\s+of\b|\(side view\)/i;
-
-/** Stray markup/control-character leakage — most commonly fragments of a reasoning model's <think> block that survived the comma-split. */
 const STRAY_SYMBOL_RE = /[<>{}[\]\\|`^~_]|<\/?think>/i;
 
-/** The model sometimes self-annotates a keyword instead of just naming it, e.g. "fire extinguisher (main object)" or "macro (shot type - skip)". Keep the term, drop the commentary. */
+// 3. MADDE: Negatif Kelime / Mantık Filtresi (Jenerik / Çelişkili Kelime Engeli)
+const IRRELEVANT_GENERIC_RE = /\b(image|photo|photograph|picture|background|copyspace|copy space|isolated|studio shot|horizontal|vertical|nobody|no people|looking at camera)\b/i;
+
 function stripAnnotation(s: string): string {
-  return s.replace(/\s*\([^)]*\)?\s*$/, '').trim();
+  return s.replace(/\s*\(/g, ' (').replace(/\s*\([^)]*\)?\s*$/, '').trim();
 }
 
-/** Sentence-like commentary the model sometimes emits inline instead of a real keyword, e.g. "The floor is tiled." or "hand (main subject)" once the parenthetical is stripped and only "hand" remains — this catches what stripping alone can't. */
-const SENTENCE_VERB_RE = /\b(is|are|was|were|has|have|shows?|depicts?|contains?|appears?)\b/i;
+const SENTENCE_VERB_RE = /\b(is|are|was|were|has|have|shows?|depicts?|contains?|appears?|working|suggesting|looking|seemingly)\b/i;
 const LEADING_ARTICLE_RE = /^(the|a|an)\s+/i;
-/** Meta-commentary about the keyword list itself, not an actual tag (e.g. "high-value keywords."). */
-const META_PHRASE_RE = /\bkeywords?\b|\bkeyword list\b/i;
+const META_PHRASE_RE = /\bkeywords?|keyword list|top image|bottom image|the image\b/i;
 
+/** Groq filtresi — SADECE Groq tarafından üretilen kelimeleri denetler. Everypixel kelimelerine UYGULANMAZ. */
 function looksLikeKeyword(s: string): boolean {
   if (!s) return false;
   if (s.includes(':')) return false;
   if (STRAY_SYMBOL_RE.test(s)) return false;
   if (LAYOUT_LABEL_RE.test(s)) return false;
   if (META_PHRASE_RE.test(s)) return false;
-  if (HEDGE_EN_RE.test(s) || HEDGE_TR_RE.test(s)) return false; // e.g. "bearded man (likely a manager"
+  if (HEDGE_EN_RE.test(s) || HEDGE_TR_RE.test(s)) return false;
+  
+  // 3. Madde Uygulaması: "photo", "image", "copyspace" gibi gereksiz teknik kelimeleri listeden eliyoruz
+  if (IRRELEVANT_GENERIC_RE.test(s)) return false;
+
   const openParens = (s.match(/\(/g) ?? []).length;
   const closeParens = (s.match(/\)/g) ?? []).length;
-  if (openParens !== closeParens) return false; // truncated parenthetical, usually from a mis-split sentence
+  if (openParens !== closeParens) return false;
+
   const wordCount = s.split(/\s+/).filter(Boolean).length;
-  if (wordCount === 0 || wordCount > 5) return false;
-  if (LEADING_ARTICLE_RE.test(s) && wordCount >= 3) return false; // "the floor is tiled" style sentence fragments
-  if (wordCount >= 3 && SENTENCE_VERB_RE.test(s)) return false; // sentence-like commentary, not a keyword
-  return /[a-zA-Z]/.test(s); // must contain at least one letter — rejects stray punctuation-only fragments
+  if (wordCount === 0 || wordCount > 3) return false;
+  if (LEADING_ARTICLE_RE.test(s) && wordCount >= 2) return false;
+  if (wordCount >= 2 && SENTENCE_VERB_RE.test(s)) return false;
+
+  return /[a-zA-Z]/.test(s);
 }
 
-/** Split on commas, newlines, or semicolons — the model doesn't always use commas as instructed. */
-function parseKeywordCsv(raw: string): string[] {
-  // Strip <think> reasoning blocks and code fences first — apiKeywords/apiKeywordsAllPlatforms use the
-  // reasoning-capable vision model, and without this, comma-split fragments of its internal reasoning
-  // (or stray <think> tag remnants) can slip past the word-count filter and pollute the keyword list.
+function parseKeywordCsv(raw: string, whitelistTerms?: Set<string>): string[] {
   const cleaned = normalizeModelJsonRaw(raw);
   const seen = new Set<string>();
   return cleaned
     .split(/[,;\n]+/)
-    .map((k) =>
-      stripAnnotation(
-        k
-          .replace(/^[\s"'*\-–—]+/, '')
-          .replace(/^\d+[.)]\s*/, '') // strip leading "1." / "2)" numbering
-          .replace(/["'*\-–—.\s]+$/, '') // trailing quotes/dashes/period
-          .trim()
-      )
-    )
-    .filter(looksLikeKeyword)
+    .map((k) => {
+      const trimmed = k
+        .replace(/^[\s"'*\-–—]+/, '')
+        .replace(/^\d+[.)]\s*/, '')
+        .replace(/["'*\-–—.\s]+$/, '')
+        .trim();
+      return stripAnnotation(trimmed);
+    })
+    .filter((k) => {
+      if (!k) return false;
+      const lower = k.toLowerCase();
+      // Everypixel veya Whitelist terimleri filtreden Muaf tutulur:
+      if (whitelistTerms && whitelistTerms.has(lower)) return true;
+      return looksLikeKeyword(k);
+    })
     .filter((k) => {
       const lower = k.toLowerCase();
-      if (seen.has(lower)) return false; // the model occasionally repeats a term (once plain, once annotated)
+      if (seen.has(lower)) return false;
       seen.add(lower);
       return true;
     });
@@ -643,59 +579,98 @@ function parseKeywordCsv(raw: string): string[] {
 
 const KEYWORDS_TARGET = 50;
 
-/** Text-only (no image re-upload) follow-up so a short first pass doesn't leave the list under target — cheaper and faster than another vision call. */
-async function topUpKeywords(existing: string[], creds: AiCreds, hint: string): Promise<string[]> {
-  if (existing.length >= KEYWORDS_TARGET) return existing;
+/** Everypixel eksik kelime dönerse veya hiç kullanılmazsa kalan kısmı Groq ile 50'ye tamamlar. */
+export async function topUpKeywords(existing: string[], creds: AiCreds, hint: string): Promise<string[]> {
+  if (existing.length >= KEYWORDS_TARGET) return existing.slice(0, KEYWORDS_TARGET);
   const need = KEYWORDS_TARGET - existing.length;
-  const hintTxt = hint.trim() ? `\nContext: ${hint.trim()}` : '';
-  const prompt = `You are a microstock SEO expert. Based on this existing list of English keywords for a stock photo/video, generate ${need} ADDITIONAL distinct English keywords for the same image that stock buyers commonly search. Do not repeat any existing keyword or its plural/singular variant. Singular form only. No layout/composition labels, no hedging, no explanations.${hintTxt}
+  const hintTxt = hint.trim() ? `\nContext/User Note: ${hint.trim()}` : '';
+  const prompt = `You are a microstock SEO expert. Based on this existing list of English keywords and User Note, generate ${need} ADDITIONAL distinct English keywords (1-3 words max, varied concepts: human presence, location, events, industry). Extract key terms from the User Note if missing. Include commercial concepts (e.g. logistics, safety, efficiency). Do NOT repeat existing keywords or synonyms. Singular form only.${hintTxt}
 
 Existing keywords: ${existing.join(', ')}
 
 Output format: exactly one line of comma-separated keywords, nothing else.`;
   try {
     const raw = await groqText(prompt, creds, 600);
-    const more = parseKeywordCsv(raw);
+    // Existing (Everypixel) kelimeleri whitelist olarak gönderip filtrelerden muaf tutuyoruz:
+    const whitelist = new Set(existing.map((e) => e.toLowerCase().trim()));
+    const more = parseKeywordCsv(raw, whitelist);
     return fillKeywordsToMax(existing, KEYWORDS_TARGET, more);
   } catch {
-    return existing; // best-effort — a short list is still better than a failed generation
+    return existing;
   }
 }
 
+/** Groq ile Sıfırdan Anahtar Kelime Üretimi (Everypixel olmadığında çalışır) */
 export async function apiKeywords(
   b64: string,
   creds: AiCreds,
   hint = '',
   platform: 'adobe' | 'shutterstock' | 'istock' = 'adobe'
 ): Promise<string[]> {
-  const hintTxt = hint.trim() ? `\nExtra context (important): ${hint}` : '';
+  const hintTxt = hint.trim() ? `\nExtra Context / User Note (PRIORITY KEYWORDS): ${hint}` : '';
   const platformNote = KEYWORDS_BY_PLATFORM[platform] ?? 'microstock platforms';
   const prompt = KEYWORDS_PROMPT.replace('{platform}', platformNote).replace('{hint}', hintTxt);
-  // Generous budget: the vision model reasons through the scene internally before listing 50 keywords,
-  // and reasoning tokens eat into the same max_tokens budget — 450 was cutting the list short mid-response.
   const raw = await groqVision(b64, prompt, creds, 1800);
   return topUpKeywords(parseKeywordCsv(raw), creds, hint);
 }
 
-/** Single vision call for all platforms (faster than 3 separate calls). */
 export async function apiKeywordsAllPlatforms(
   b64: string,
   creds: AiCreds,
   hint = ''
 ): Promise<string[]> {
-  const hintTxt = hint.trim() ? `\nExtra context (important): ${hint}` : '';
+  const hintTxt = hint.trim() ? `\nExtra Context / User Note (PRIORITY KEYWORDS): ${hint}` : '';
   const prompt = KEYWORDS_PROMPT.replace('{platform}', KEYWORDS_ALL_PLATFORMS).replace('{hint}', hintTxt);
-  // Generous budget: the vision model reasons through the scene internally before listing 50 keywords,
-  // and reasoning tokens eat into the same max_tokens budget — 450 was cutting the list short mid-response.
   const raw = await groqVision(b64, prompt, creds, 1800);
   return topUpKeywords(parseKeywordCsv(raw), creds, hint);
 }
+
+// ============================================================================
+// MODÜL 3: HİBRİT ORKESTRASYON (BAŞLIK, AÇIKLAMA VE KELİME BİRLEŞTİRİCİ)
+// ============================================================================
+
+/** Hem başlık/açıklamayı (Groq API 1) hem de anahtar kelimeleri (Everypixel / Groq API 2) bağımsız ve paralel çalıştırır. */
+export async function apiMetadataWithKeywords(
+  b64: string,
+  creds: AiCreds,
+  hint: string,
+  lang: SecondaryLanguage,
+  initialKeywords: string[] = [] // Everypixel'den gelen ham kelimeler (varsa)
+): Promise<{
+  title_en: string;
+  title_secondary: string;
+  description_en: string;
+  description_secondary: string;
+  keywords: string[];
+}> {
+  // Başlık/Açıklama (API 1) ve Kelime Tamamlama (API 2) bağımsız çalışır
+  const metaPromise = apiMetadata(b64, creds, hint, lang);
+  
+  let kwPromise: Promise<string[]>;
+  if (initialKeywords.length >= 50) {
+    // Everypixel zaten 50 kelime vermişse doğrudan kullan
+    kwPromise = Promise.resolve(initialKeywords.slice(0, 50));
+  } else if (initialKeywords.length > 0) {
+    // Everypixel eksik verdiyse Groq ile tamamla
+    kwPromise = topUpKeywords(initialKeywords, creds, hint);
+  } else {
+    // Everypixel yoksa tüm kelimeleri Groq üretsin
+    kwPromise = apiKeywordsAllPlatforms(b64, creds, hint);
+  }
+
+  const [meta, keywords] = await Promise.all([metaPromise, kwPromise]);
+  return { ...meta, keywords };
+}
+
+// ============================================================================
+// ÇEVİRİ VE YARDIMCI FONKSİYONLAR
+// ============================================================================
 
 export async function apiTranslate(text: string, toLang: 'tr' | 'en', creds: AiCreds): Promise<string> {
   const lang = toLang === 'tr' ? 'Türkçe' : 'English';
   const trExtra =
     toLang === 'tr'
-      ? ' Use direct Turkish; do not add hedging or uncertainty (no muhtemelen, belki, sanırım, olabilir, gibi görünüyor, büyük ihtimalle). For comma-separated keyword lists, translate each term plainly without adding qualifiers.'
+      ? ' Use direct Turkish; do not add hedging or uncertainty. For comma-separated keyword lists, translate each term plainly without adding qualifiers.'
       : '';
   return groqText(
     `Translate to ${lang}. Keep it natural and professional.${trExtra} Return ONLY the translation:\n\n${text}`,
@@ -715,7 +690,6 @@ export async function apiTranslateKw(kws: string[], creds: AiCreds): Promise<str
   }
 }
 
-/** Appends from candidates (no duplicates, case-insensitive) until list length reaches max. */
 export function fillKeywordsToMax(existing: string[], max: number, candidates: string[]): string[] {
   const set = new Set(existing.map((k) => k.toLowerCase().trim()));
   const out = [...existing];
@@ -754,7 +728,6 @@ export async function apiTranslateKwNumbered(kws: string[], creds: AiCreds, lang
   const prompt = buildNumberedTranslatePrompt(lang.name);
   const chunks: string[][] = [];
   for (let i = 0; i < list.length; i += TR_KW_BATCH_SIZE) chunks.push(list.slice(i, i + TR_KW_BATCH_SIZE));
-  // Batches are independent (different keyword ranges) — run them concurrently instead of awaiting one at a time.
   const results = await Promise.all(
     chunks.map(async (chunk) => {
       try {
@@ -769,7 +742,6 @@ export async function apiTranslateKwNumbered(kws: string[], creds: AiCreds, lang
   return results.flat();
 }
 
-/** Collect unique English keywords from all three platform lists (first occurrence order, case-insensitive dedupe). */
 export function buildUniqueEnList(adobeEn: string[], shutterEn: string[], istockEn: string[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
@@ -786,7 +758,6 @@ export function buildUniqueEnList(adobeEn: string[], shutterEn: string[], istock
   return out;
 }
 
-/** Translate a list of unique EN keywords and return a map: lowercase EN -> secondary language. Same EN always gets the same translation. */
 export async function apiTranslateUniqueKwToMap(uniqueEn: string[], creds: AiCreds, lang: SecondaryLanguage): Promise<Map<string, string>> {
   const trMap = new Map<string, string>();
   if (uniqueEn.length === 0) return trMap;
@@ -794,8 +765,6 @@ export async function apiTranslateUniqueKwToMap(uniqueEn: string[], creds: AiCre
   const prompt = buildNumberedTranslatePrompt(lang.name);
   const chunks: string[][] = [];
   for (let i = 0; i < list.length; i += TR_KW_BATCH_SIZE) chunks.push(list.slice(i, i + TR_KW_BATCH_SIZE));
-  // Up to 150 keywords could mean 6 sequential round-trips (~2-4s each) if awaited one at a time —
-  // that alone was a major chunk of "Üret" latency. Batches don't depend on each other, so run them together.
   const results = await Promise.all(
     chunks.map(async (chunk) => {
       try {
@@ -815,7 +784,6 @@ export async function apiTranslateUniqueKwToMap(uniqueEn: string[], creds: AiCre
   return trMap;
 }
 
-/** Apply EN->secondary map to a keyword list (preserves order; missing keys stay as EN). */
 export function applyTrMap(enList: string[], trMap: Map<string, string>): string[] {
   return enList.map((en) => {
     const t = (en ?? '').trim();
@@ -827,7 +795,7 @@ export function applyTrMap(enList: string[], trMap: Map<string, string>): string
 function buildSecondaryTranslatePrompt(lang: SecondaryLanguage): string {
   const trExtra =
     lang.code === 'tr'
-      ? ' Do not add hedging (no muhtemelen, belki, sanırım, olabilir, gibi görünüyor, büyük ihtimalle).'
+      ? ' Do not add hedging.'
       : ' Do not add hedging or uncertainty words.';
   return (
     `Translate the following to natural ${lang.name} for stock/advertising copy. Return only the ${lang.name} text, no explanation or quotes. ` +
@@ -851,7 +819,6 @@ function buildEnglishTranslatePrompt(lang: SecondaryLanguage): string {
   );
 }
 
-/** Reverse direction of apiTranslateSecondary — used when the user manually edits a secondary-language field and the English field must follow. */
 export async function apiTranslateToEnglish(text: string, creds: AiCreds, lang: SecondaryLanguage): Promise<string> {
   const t = (text ?? '').trim();
   if (!t) return '';

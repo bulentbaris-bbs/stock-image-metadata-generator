@@ -1,7 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 
 /** Inline, contentEditable secondary-language translation — flashes green ("is-synced") for a moment after a manual edit is committed on blur. */
-export function TrInline({ value, onCommit, small, translating }: { value: string; onCommit: (v: string) => void; small?: boolean; translating?: boolean }) {
+export function TrInline({
+  value,
+  onCommit,
+  small,
+  translating,
+  englishOnly,
+}: {
+  value: string;
+  onCommit: (v: string) => void;
+  small?: boolean;
+  translating?: boolean;
+  englishOnly?: boolean;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const originalRef = useRef(value);
   const [synced, setSynced] = useState(false);
@@ -14,6 +26,8 @@ export function TrInline({ value, onCommit, small, translating }: { value: strin
   }, [value]);
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  if (englishOnly) return null;
 
   if (translating && !value) {
     return (
