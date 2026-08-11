@@ -25,6 +25,12 @@ export function TitleDescriptionForm() {
   const titleCountClass = titleLen === 0 ? 'text-text2' : titleOverMax ? 'text-red' : titleInRange ? 'text-green' : 'text-text2';
 
   const descLen = (record.description_en ?? '').length;
+  const DESC_MIN = 200;
+  const DESC_MAX = 400;
+  const descInRange = descLen >= DESC_MIN && descLen <= DESC_MAX;
+  const descOverMax = descLen > DESC_MAX;
+  const descFillClass = descLen === 0 ? 'bg-[#E1E6EC]' : descOverMax ? 'bg-redBg' : descInRange ? 'bg-greenBg' : 'bg-[#E1E6EC]';
+  const descCountClass = descLen === 0 ? 'text-text2' : descOverMax ? 'text-red' : descInRange ? 'text-green' : 'text-text2';
 
   return (
     <>
@@ -53,7 +59,10 @@ export function TitleDescriptionForm() {
           stopId="description"
           label={t('field_description')}
           actionLabel={t('copy_action')}
-          countText={t('char_count', { n: descLen })}
+          countText={`${descLen} · ${DESC_MIN}–${DESC_MAX}`}
+          countClassName={descCountClass}
+          fillPercent={Math.min(100, (descLen / DESC_MAX) * 100)}
+          fillColorClass={descFillClass}
           getCopyText={() => record.description_en ?? ''}
         />
         <div className="px-3 pt-1.5 pb-2">

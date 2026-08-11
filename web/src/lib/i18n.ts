@@ -40,6 +40,12 @@ const STRINGS: Record<string, Dict> = {
   istock_library_title: {
     en: 'iStock library', tr: 'iStock kütüphanesi', de: 'iStock-Bibliothek', es: 'Biblioteca de iStock', fr: 'Bibliothèque iStock', ru: 'Библиотека iStock', zh: 'iStock 词库',
   },
+  theme_toggle_to_dark_title: {
+    en: 'Switch to dark mode', tr: 'Karanlık moda geç', de: 'Zum Dunkelmodus wechseln', es: 'Cambiar a modo oscuro', fr: 'Passer en mode sombre', ru: 'Включить тёмный режим', zh: '切换到深色模式',
+  },
+  theme_toggle_to_light_title: {
+    en: 'Switch to light mode', tr: 'Aydınlık moda geç', de: 'Zum Hellmodus wechseln', es: 'Cambiar a modo claro', fr: 'Passer en mode clair', ru: 'Включить светлый режим', zh: '切换到浅色模式',
+  },
   lang_select_title: {
     en: 'Translation language', tr: 'İkincil çeviri dili', de: 'Zweite Ausgabesprache', es: 'Idioma secundario', fr: 'Langue secondaire', ru: 'Второй язык', zh: '第二输出语言',
   },
@@ -105,6 +111,9 @@ const STRINGS: Record<string, Dict> = {
     fr: "Choisir l'image (ou double-cliquez sur la miniature)",
     ru: 'Выбрать кадр (или дважды щёлкните по миниатюре)',
     zh: '选择帧（也可双击缩略图打开）',
+  },
+  frame_pick_overlay_label: {
+    en: '▶ Pick frame', tr: '▶ Kare seç', de: '▶ Frame wählen', es: '▶ Elegir fotograma', fr: "▶ Choisir l'image", ru: '▶ Выбрать кадр', zh: '▶ 选择帧',
   },
   frame_pick_selected_title: {
     en: 'Frame selected — click to change (or double-click the thumbnail)',
@@ -306,6 +315,81 @@ const STRINGS: Record<string, Dict> = {
   },
   ep_secret_label: {
     en: 'Everypixels Client Secret', tr: 'Everypixels Client Secret', de: 'Everypixels Client-Secret', es: 'Everypixels Client Secret', fr: 'Everypixels Client Secret', ru: 'Everypixels Client Secret', zh: 'Everypixels 客户端密钥',
+  },
+  ep_secret_placeholder: {
+    en: '••••••••', tr: '••••••••', de: '••••••••', es: '••••••••', fr: '••••••••', ru: '••••••••', zh: '••••••••',
+  },
+  settings_group_meta_title: {
+    en: 'Title & Description', tr: 'Başlık & Açıklama', de: 'Titel & Beschreibung', es: 'Título y descripción', fr: 'Titre et description', ru: 'Заголовок и описание', zh: '标题与描述',
+  },
+  settings_group_keywords_title: {
+    en: 'Keywords', tr: 'Anahtar Kelimeler', de: 'Keywords', es: 'Palabras clave', fr: 'Mots-clés', ru: 'Ключевые слова', zh: '关键词',
+  },
+  groq_primary_key_label: {
+    en: 'Groq primary key', tr: 'Groq asıl key', de: 'Groq-Hauptschlüssel', es: 'Clave Groq principal', fr: 'Clé Groq principale', ru: 'Основной ключ Groq', zh: 'Groq 主密钥',
+  },
+  groq_fallback_key_label: {
+    en: 'Groq fallback key', tr: 'Groq yedek key', de: 'Groq-Ersatzschlüssel', es: 'Clave Groq de respaldo', fr: 'Clé Groq de secours', ru: 'Резервный ключ Groq', zh: 'Groq 备用密钥',
+  },
+  groq_primary_key_placeholder: {
+    en: 'Groq key', tr: 'Groq key', de: 'Groq-Key', es: 'Clave Groq', fr: 'Clé Groq', ru: 'Ключ Groq', zh: 'Groq 密钥',
+  },
+  groq_fallback_key_placeholder: {
+    en: 'Groq key (optional)', tr: 'Groq key (opsiyonel)', de: 'Groq-Key (optional)', es: 'Clave Groq (opcional)', fr: 'Clé Groq (facultative)', ru: 'Ключ Groq (необязательно)', zh: 'Groq 密钥（可选）',
+  },
+  groq_primary_key_meta_tip: {
+    en: 'Primary Groq API key used to generate the title and description.',
+    tr: 'Başlık ve açıklama üretiminde kullanılan birincil Groq API anahtarı.',
+    de: 'Primärer Groq-API-Key für die Titel- und Beschreibungserstellung.',
+    es: 'Clave API de Groq principal usada para generar el título y la descripción.',
+    fr: "Clé API Groq principale utilisée pour générer le titre et la description.",
+    ru: 'Основной API-ключ Groq, используемый для генерации заголовка и описания.',
+    zh: '用于生成标题和描述的主要 Groq API 密钥。',
+  },
+  groq_primary_key_keywords_tip: {
+    en: 'Primary Groq API key used to generate keywords. You can use a different key from the Title & Description group to keep their rate limits separate.',
+    tr: 'Anahtar kelime üretiminde kullanılan birincil Groq API anahtarı. Başlık/Açıklama grubundakinden farklı bir anahtar girerek limitleri ayrı tutabilirsiniz.',
+    de: 'Primärer Groq-API-Key für die Keyword-Erstellung. Sie können einen anderen Key als in der Gruppe „Titel & Beschreibung“ verwenden, um die Limits getrennt zu halten.',
+    es: 'Clave API de Groq principal usada para generar palabras clave. Puedes usar una clave distinta a la del grupo Título y descripción para mantener los límites separados.',
+    fr: "Clé API Groq principale utilisée pour générer les mots-clés. Vous pouvez utiliser une clé différente de celle du groupe Titre et description pour séparer les limites.",
+    ru: 'Основной API-ключ Groq, используемый для генерации ключевых слов. Вы можете использовать другой ключ, отличный от группы «Заголовок и описание», чтобы разделить лимиты.',
+    zh: '用于生成关键词的主要 Groq API 密钥。您可以使用与"标题与描述"组不同的密钥，以便分开限额。',
+  },
+  groq_fallback_key_tip: {
+    en: 'Backup Groq key that kicks in automatically if the primary key hits its rate limit.',
+    tr: 'Birincil anahtar limit aşımına (rate limit) uğrarsa otomatik devreye giren yedek Groq anahtarı.',
+    de: 'Ersatz-Groq-Key, der automatisch einspringt, wenn der primäre Key sein Limit erreicht.',
+    es: 'Clave Groq de respaldo que se activa automáticamente si la clave principal alcanza su límite.',
+    fr: "Clé Groq de secours qui prend automatiquement le relais si la clé principale atteint sa limite.",
+    ru: 'Резервный ключ Groq, который автоматически включается, если основной ключ достиг лимита.',
+    zh: '当主密钥达到速率限制时自动启用的备用 Groq 密钥。',
+  },
+  openrouter_group_tip: {
+    en: 'Fallback provider used as a last resort once every Groq key in this group is exhausted.',
+    tr: 'Bu gruptaki tüm Groq anahtarları tükendiğinde son çare olarak kullanılan yedek sağlayıcı.',
+    de: 'Fallback-Anbieter, der als letztes Mittel verwendet wird, wenn alle Groq-Keys dieser Gruppe erschöpft sind.',
+    es: 'Proveedor de respaldo usado como último recurso cuando se agotan todas las claves Groq de este grupo.',
+    fr: "Fournisseur de secours utilisé en dernier recours lorsque toutes les clés Groq de ce groupe sont épuisées.",
+    ru: 'Резервный провайдер, используемый в крайнем случае, когда все ключи Groq в этой группе исчерпаны.',
+    zh: '当此组中所有 Groq 密钥都用尽时作为最后手段使用的备用提供商。',
+  },
+  ep_id_tip: {
+    en: 'Everypixels Client ID for keyword generation (paid, optional — leave empty to generate keywords with Groq instead).',
+    tr: 'Anahtar kelime üretimi için Everypixels servisinin Client ID bilgisi (ücretli, opsiyonel — boş bırakılırsa keyword üretimi Groq ile yapılır).',
+    de: 'Everypixels-Client-ID für die Keyword-Erstellung (kostenpflichtig, optional — leer lassen, um Keywords stattdessen mit Groq zu erstellen).',
+    es: 'Client ID de Everypixels para generar palabras clave (de pago, opcional — déjalo vacío para generarlas con Groq).',
+    fr: "Client ID Everypixels pour générer les mots-clés (payant, facultatif — laissez vide pour générer les mots-clés avec Groq à la place).",
+    ru: 'Client ID Everypixels для генерации ключевых слов (платно, необязательно — оставьте пустым, чтобы генерировать ключевые слова через Groq).',
+    zh: '用于生成关键词的 Everypixels 客户端 ID（付费，可选——留空则改用 Groq 生成关键词）。',
+  },
+  ep_secret_tip: {
+    en: 'Secret key used together with the Everypixels Client ID.',
+    tr: 'Everypixels Client ID ile birlikte kullanılan gizli anahtar.',
+    de: 'Geheimer Schlüssel, der zusammen mit der Everypixels-Client-ID verwendet wird.',
+    es: 'Clave secreta usada junto con el Client ID de Everypixels.',
+    fr: "Clé secrète utilisée avec le Client ID Everypixels.",
+    ru: 'Секретный ключ, используемый вместе с Client ID Everypixels.',
+    zh: '与 Everypixels 客户端 ID 一起使用的密钥。',
   },
   save_btn: {
     en: '💾 Save', tr: '💾 Kaydet', de: '💾 Speichern', es: '💾 Guardar', fr: '💾 Enregistrer', ru: '💾 Сохранить', zh: '💾 保存',

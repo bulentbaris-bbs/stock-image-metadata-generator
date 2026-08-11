@@ -136,7 +136,7 @@ export function KeywordChips({
     next[i] = v;
     onUpdateSecondary(next);
     // A manual correction to the secondary-language keyword must also correct the English source term.
-    const groqKeys = getActiveGroqKeys(settings);
+    const groqKeys = getActiveGroqKeys(settings.groq_api_keys_keywords);
     if (groqKeys.length === 0) return;
     const lang = getLanguage(record.secondary_lang ?? settings.target_language);
     setTranslatingIdx(i);

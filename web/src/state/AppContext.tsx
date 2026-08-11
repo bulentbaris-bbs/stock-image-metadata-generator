@@ -66,6 +66,7 @@ interface AppState {
   kbZone: KbZone;
   kbStopIndex: number;
   kbStopRegistryRef: MutableRefObject<KbStopRegistry>;
+  theme: Theme;
 }
 
 interface AppActions {
@@ -96,10 +97,23 @@ interface AppActions {
   setKbStopIndex: (i: number) => void;
   registerKbStop: (id: KbStopId, handle: KbStopHandle) => void;
   unregisterKbStop: (id: KbStopId) => void;
+  saveTheme: (t: Theme) => void;
+  toggleTheme: () => void;
 }
 
 function getFileId(file: File): string {
   return `${file.name}-${file.size}-${file.lastModified}`;
+}
+
+export type Theme = 'light' | 'dark';
+const THEME_KEY = 'theme';
+
+/** Saved preference if present, otherwise the OS/browser color-scheme preference. */
+function loadTheme(): Theme {
+  if (typeof window === 'undefined') return 'light';
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved === 'light' || saved === 'dark') return saved;
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 const AppContext = createContext<(AppState & AppActions) | null>(null);
@@ -122,6 +136,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [kbStopIndex, setKbStopIndex] = useState(0);
   const kbStopRegistryRef = useRef<KbStopRegistry>({});
   const [hint, setHint] = useState('');
+  const [theme, setThemeState] = useState<Theme>(() => {
+    const initial = loadTheme();
+    if (typeof document !== 'undefined') document.documentElement.classList.toggle('dark', initial === 'dark');
+    return initial;
+  });
   const lastUndoRef = useRef<{ fileId: string; record: MetadataRecord } | null>(null);
   /** Last full `istock_keywords_en` from `setMetadata` / undo per file — drives "Kütüphaneye Ekle" diff. */
   const istockEnBaselineByFileIdRef = useRef<Record<string, string[]>>({});
@@ -203,6 +222,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const saveSettingsAction = useCallback((s: Settings) => {
     setSettingsState(s);
     saveSettings(s);
+  }, []);
+
+  const saveTheme = useCallback((t: Theme) => {
+    setThemeState(t);
+    localStorage.setItem(THEME_KEY, t);
+    document.documentElement.classList.toggle('dark', t === 'dark');
+  }, []);
+  const toggleTheme = useCallback(() => {
+    setThemeState((prev) => {
+      const next: Theme = prev === 'dark' ? 'light' : 'dark';
+      localStorage.setItem(THEME_KEY, next);
+      document.documentElement.classList.toggle('dark', next === 'dark');
+      return next;
+    });
   }, []);
 
   const saveIstockMapAction = useCallback((m: IStockMap) => {
@@ -290,7 +323,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     async (fileId: string, keys: { en: KeywordKey; secondary: KeywordKey }, enFull: string[]) => {
       const record = metadataByFileId[fileId];
       if (!record) return;
-      const groqKeys = getActiveGroqKeys(settings);
+      const groqKeys = getActiveGroqKeys(settings.groq_api_keys_keywords);
       if (groqKeys.length === 0) return;
       const lang = getLanguage(settings.target_language);
       const enFiltered = enFull.map((s) => (s ?? '').trim()).filter(Boolean);
@@ -315,7 +348,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     async (fileId: string) => {
       const record = metadataByFileId[fileId];
       if (!record) return;
-      const groqKeys = getActiveGroqKeys(settings);
+      const groqKeys = getActiveGroqKeys(settings.groq_api_keys_keywords);
       if (groqKeys.length === 0) return;
       const lang = getLanguage(settings.target_language);
       const adobeEn = (record.adobe_keywords_en ?? []).map((k) => (k ?? '').trim()).filter(Boolean);
@@ -341,7 +374,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     async (fileId: string, recordFromCaller?: MetadataRecord | null) => {
       const record = recordFromCaller ?? metadataByFileId[fileId];
       if (!record) return;
-      const groqKeys = getActiveGroqKeys(settings);
+      const groqKeys = getActiveGroqKeys(settings.groq_api_keys_meta);
       if (groqKeys.length === 0) return;
       const lang = getLanguage(settings.target_language);
       const creds = { groqKeys, lang: lang.code as UILang };
@@ -361,7 +394,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     () => ({
       files, currentFileId, selectedIds, metadataByFileId, settings, istockMap, hint,
       istockBaselineEpoch, istockEnBaselineByFileIdRef, videoFrameByFileId, frameEditorFileId,
-      activeTab, kbZone, kbStopIndex, kbStopRegistryRef,
+      activeTab, kbZone, kbStopIndex, kbStopRegistryRef, theme,
       setFiles, addFiles, setCurrentFileId, toggleSelection, selectAll, deselectAll,
       setMetadata, updateMetadata, undo,
       setSettings: (s: Settings) => setSettingsState(s), saveSettings: saveSettingsAction,
@@ -370,8 +403,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setHint, refreshSecondaryKeywordField, refreshSecondaryTitleDescription, refreshSecondaryAllKeywords,
       setVideoFrame, openFrameEditor, closeFrameEditor,
       setActiveTab, setKbZone, setKbStopIndex, registerKbStop, unregisterKbStop,
+      saveTheme, toggleTheme,
     }),
-    [files, currentFileId, selectedIds, metadataByFileId, settings, istockMap, hint, istockBaselineEpoch, videoFrameByFileId, frameEditorFileId, activeTab, kbZone, kbStopIndex, saveSettingsAction, saveIstockMapAction, removeIstockEntryAction, refreshSharedIstockLibraryAction, refreshSecondaryKeywordField, refreshSecondaryTitleDescription, refreshSecondaryAllKeywords, undo, setVideoFrame, openFrameEditor, closeFrameEditor, registerKbStop, unregisterKbStop]
+    [files, currentFileId, selectedIds, metadataByFileId, settings, istockMap, hint, istockBaselineEpoch, videoFrameByFileId, frameEditorFileId, activeTab, kbZone, kbStopIndex, theme, saveSettingsAction, saveIstockMapAction, removeIstockEntryAction, refreshSharedIstockLibraryAction, refreshSecondaryKeywordField, refreshSecondaryTitleDescription, refreshSecondaryAllKeywords, undo, setVideoFrame, openFrameEditor, closeFrameEditor, registerKbStop, unregisterKbStop, saveTheme, toggleTheme]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

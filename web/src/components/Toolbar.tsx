@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { useT } from '../lib/useT';
 import { SECONDARY_LANGUAGES } from '../lib/languages';
 import { getFileId, sortedAllowedFiles } from '../lib/media';
-import { MAX_GROQ_KEYS, getActiveGroqKeys } from '../lib/storage';
+import { MAX_GROQ_KEYS_PER_GROUP, getActiveGroqKeys } from '../lib/storage';
 import { useApp } from '../state/AppContext';
 
 const SIDEBAR_W = 280;
@@ -34,7 +34,7 @@ export function Toolbar({
   onOpenIStock: () => void;
   onOpenSettings: () => void;
 }) {
-  const { hint, setHint, settings, setFiles, saveSettings } = useApp();
+  const { hint, setHint, settings, setFiles, saveSettings, theme, toggleTheme } = useApp();
   const t = useT();
   const folderInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -51,10 +51,11 @@ export function Toolbar({
   };
 
   const progressLabel = generating && generatingProgress ? ` ${generatingProgress.current}/${generatingProgress.total}` : '';
-  const activeKeys = getActiveGroqKeys(settings).length;
+  const activeMetaKeys = getActiveGroqKeys(settings.groq_api_keys_meta).length;
+  const activeKwKeys = getActiveGroqKeys(settings.groq_api_keys_keywords).length;
   const openRouterSet = !!settings.openrouter_api_key?.trim();
-  const groqDot = activeKeys > 0 ? 'bg-green' : openRouterSet ? 'bg-[#E8A317]' : 'bg-red';
-  const groqTitle = t('groq_status_title', { active: activeKeys, max: MAX_GROQ_KEYS }) + (openRouterSet ? t('openrouter_active_suffix') : '');
+  const groqDot = activeMetaKeys > 0 && activeKwKeys > 0 ? 'bg-green' : activeMetaKeys > 0 || openRouterSet ? 'bg-[#E8A317]' : 'bg-red';
+  const groqTitle = `${t('groq_status_title', { active: activeMetaKeys, max: MAX_GROQ_KEYS_PER_GROUP })} (Başlık) · ${t('groq_status_title', { active: activeKwKeys, max: MAX_GROQ_KEYS_PER_GROUP })} (Keyword)` + (openRouterSet ? t('openrouter_active_suffix') : '');
 
   return (
     <header className="bg-card border-b border-borderSoft shrink-0 flex items-stretch">
@@ -143,6 +144,18 @@ export function Toolbar({
             <span className="pointer-events-none">{settings.target_language.toUpperCase()}</span>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none absolute right-2 text-text3"><polyline points="6 9 12 15 18 9" /></svg>
           </div>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            title={theme === 'dark' ? t('theme_toggle_to_light_title') : t('theme_toggle_to_dark_title')}
+            className="btn-press w-[34px] h-[34px] rounded-lg border border-border bg-card flex items-center justify-center text-text2 hover:bg-bg"
+          >
+            {theme === 'dark' ? (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4.5" /><line x1="12" y1="1.5" x2="12" y2="4" /><line x1="12" y1="20" x2="12" y2="22.5" /><line x1="4.2" y1="4.2" x2="5.9" y2="5.9" /><line x1="18.1" y1="18.1" x2="19.8" y2="19.8" /><line x1="1.5" y1="12" x2="4" y2="12" /><line x1="20" y1="12" x2="22.5" y2="12" /><line x1="4.2" y1="19.8" x2="5.9" y2="18.1" /><line x1="18.1" y1="5.9" x2="19.8" y2="4.2" /></svg>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" /></svg>
+            )}
+          </button>
           <button
             type="button"
             onClick={onOpenIStock}

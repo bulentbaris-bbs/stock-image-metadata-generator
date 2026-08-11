@@ -109,7 +109,6 @@ export function Thumbnail({
       >
         <div
           className={`relative rounded-lg overflow-hidden bg-gradient-to-br from-[#DCE3EA] to-[#C7D0DA] flex items-center justify-center text-[#8B96A3] shrink-0 ${collapsed ? 'w-full aspect-square' : 'w-[38px] h-[38px]'}`}
-          onDoubleClick={video ? (e) => { e.stopPropagation(); openFrameEditor(entry.id); } : undefined}
         >
           {url ? (
             <img src={url} alt="" className="w-full h-full object-cover" />

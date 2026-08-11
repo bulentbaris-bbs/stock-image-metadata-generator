@@ -25,8 +25,10 @@ export interface FileEntry {
 }
 
 export interface Settings {
-  /** Up to 4 Groq API keys; rotated automatically when one hits its rate limit. */
-  groq_api_keys: string[];
+  /** Groq keys for title/description generation — [0] primary, [1] fallback. */
+  groq_api_keys_meta: string[];
+  /** Groq keys for keyword generation — [0] primary, [1] fallback. */
+  groq_api_keys_keywords: string[];
   everypixels_id: string;
   everypixels_secret: string;
   /** Optional fallback used only once every Groq key is rate-limited (routed through openrouter/auto). */

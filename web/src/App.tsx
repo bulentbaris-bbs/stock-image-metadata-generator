@@ -102,13 +102,14 @@ function AppContent() {
   const mapIstock = useCallback((kws: string[]) => kws.map((k) => istockMap[k.toLowerCase().trim()] ?? k), [istockMap]);
 
   const handleGenerate = useCallback(async () => {
-    const groqKeys = getActiveGroqKeys(settings);
+    const metaGroqKeys = getActiveGroqKeys(settings.groq_api_keys_meta);
+    const kwGroqKeys = getActiveGroqKeys(settings.groq_api_keys_keywords);
     const openRouterKey = settings.openrouter_api_key?.trim();
     const lang = getLanguage(settings.target_language);
     const englishOnly = isEnglishOnly(lang);
-    const metaCreds: GroqOnlyCreds = { groqKeys, lang: lang.code as UILang };
-    const kwCreds: AiCreds = { groqKeys, openRouterKey, lang: lang.code as UILang };
-    if (groqKeys.length === 0) { setError(t('err_meta_needs_groq')); return; }
+    const metaCreds: GroqOnlyCreds = { groqKeys: metaGroqKeys, lang: lang.code as UILang };
+    const kwCreds: AiCreds = { groqKeys: kwGroqKeys, openRouterKey, lang: lang.code as UILang };
+    if (metaGroqKeys.length === 0) { setError(t('err_meta_needs_groq')); return; }
     
     const orderedEntries = files.filter((f) => selectedIds.has(f.id));
     const toProcess = orderedEntries.length > 0 ? orderedEntries : (currentEntry ? [currentEntry] : []);
@@ -205,7 +206,7 @@ function AppContent() {
   }, [files, selectedIds, currentEntry, settings, hint, mapIstock, setMetadata, updateMetadata, setCurrentFileId, videoFrameByFileId, t]);
 
   const handleRefreshTitleOnly = useCallback(async () => {
-    const groqKeys = getActiveGroqKeys(settings);
+    const groqKeys = getActiveGroqKeys(settings.groq_api_keys_meta);
     if (groqKeys.length === 0) { setError(t('err_meta_needs_groq')); return; }
     if (!currentEntry) { setError(t('err_select_file_first')); return; }
     
@@ -245,7 +246,14 @@ function AppContent() {
       {error && <div className="px-[22px] py-2 bg-redBg text-red text-[13px] border-b border-borderSoft">{error}</div>}
       <div className="flex-1 flex min-h-0">
         <Sidebar collapsed={sidebarCollapsed} search={fileSearch} />
-        <main className="flex-1 flex flex-col min-w-0 min-h-0 bg-card"><MainForm onError={setError} /></main>
+        <main className="flex-1 flex flex-col min-w-0 min-h-0 bg-card">
+          <MainForm onError={setError} />
+          <div className="shrink-0 px-[22px] py-2 border-t border-borderSoft flex justify-end">
+            <span className="text-[11px] text-text3">
+              <kbd>↑</kbd><kbd>↓</kbd> {t('shortcut_nav')} · <kbd>→</kbd> {t('shortcut_go_to_fields')} · {t('shortcut_in_tab')} <kbd>←</kbd><kbd>→</kbd> {t('shortcut_change_platform')} · <kbd>⌘C</kbd> {t('shortcut_copy')}
+            </span>
+          </div>
+        </main>
       </div>
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <IStockModal open={iStockOpen} onClose={() => setIStockOpen(false)} />

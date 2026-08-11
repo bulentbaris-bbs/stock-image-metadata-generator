@@ -2,9 +2,11 @@ import { DEFAULT_SECONDARY_LANG } from './languages';
 import STARTER_MAP from '../data/istockStarterMap.json';
 import type { IStockMap, MetadataRecord, Settings } from '../types';
 
-export const MAX_GROQ_KEYS = 4;
+/** Per group: [0] primary key, [1] fallback key. */
+export const MAX_GROQ_KEYS_PER_GROUP = 2;
 const DEFAULT_SETTINGS: Settings = {
-  groq_api_keys: [],
+  groq_api_keys_meta: [],
+  groq_api_keys_keywords: [],
   everypixels_id: '',
   everypixels_secret: '',
   openrouter_api_key: '',
@@ -39,18 +41,29 @@ function safeParseJson<T>(s: string, fallback: T): T {
   return fallback;
 }
 
-/** Old single-key shape, kept only to migrate previously saved settings. */
+/** Old key shapes, kept only to migrate previously saved settings (single key, then one shared 4-key list). */
 interface LegacySettings {
   groq_api_key?: string;
+  groq_api_keys?: string[];
 }
 
 export function loadSettings(): Settings {
   const s = localStorage.getItem(SETTINGS_KEY);
   if (!s) return { ...DEFAULT_SETTINGS };
   const parsed = safeParseJson<Partial<Settings> & LegacySettings>(s, {});
-  const merged: Settings = { ...DEFAULT_SETTINGS, ...parsed, groq_api_keys: parsed.groq_api_keys ?? DEFAULT_SETTINGS.groq_api_keys };
-  if (merged.groq_api_keys.length === 0 && parsed.groq_api_key?.trim()) {
-    merged.groq_api_keys = [parsed.groq_api_key.trim()];
+  const merged: Settings = {
+    ...DEFAULT_SETTINGS,
+    ...parsed,
+    groq_api_keys_meta: parsed.groq_api_keys_meta ?? DEFAULT_SETTINGS.groq_api_keys_meta,
+    groq_api_keys_keywords: parsed.groq_api_keys_keywords ?? DEFAULT_SETTINGS.groq_api_keys_keywords,
+  };
+  // Migrate from the old shared key list: both groups start out with the same keys the user already had.
+  if (merged.groq_api_keys_meta.length === 0 && merged.groq_api_keys_keywords.length === 0) {
+    const legacyKeys = parsed.groq_api_keys?.length ? parsed.groq_api_keys : (parsed.groq_api_key?.trim() ? [parsed.groq_api_key.trim()] : []);
+    if (legacyKeys.length > 0) {
+      merged.groq_api_keys_meta = legacyKeys.slice(0, MAX_GROQ_KEYS_PER_GROUP);
+      merged.groq_api_keys_keywords = legacyKeys.slice(0, MAX_GROQ_KEYS_PER_GROUP);
+    }
   }
   return merged;
 }
@@ -60,8 +73,8 @@ export function saveSettings(settings: Settings): void {
 }
 
 /** Non-empty, trimmed Groq keys in entry order (for rotation). */
-export function getActiveGroqKeys(settings: Settings): string[] {
-  return settings.groq_api_keys.map((k) => (k ?? '').trim()).filter(Boolean);
+export function getActiveGroqKeys(keys: string[]): string[] {
+  return keys.map((k) => (k ?? '').trim()).filter(Boolean);
 }
 
 export function loadIStockMap(): IStockMap {

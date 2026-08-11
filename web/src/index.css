@@ -25,14 +25,41 @@
   --color-chip: #f5f5f7;
 }
 
+/* Dark mode — same variable names as @theme above, overridden when <html> carries the .dark class. */
+html.dark {
+  --color-bg: #1a1a1a;
+  --color-bgSidebar: #151515;
+  --color-card: #242424;
+  --color-card2: #2a2a2a;
+  --color-border: #333333;
+  --color-borderSoft: #2a2a2a;
+  --color-text: #f0f0f0;
+  --color-text2: #aaaaaa;
+  --color-text3: #666666;
+  --color-accent: #0a84ff;
+  --color-accentSoft: #16324f;
+  --color-accentH: #2997ff;
+  --color-input: #2a2a2a;
+  --color-sel: #16324f;
+  --color-hover: rgba(255, 255, 255, 0.04);
+  --color-green: #32d74b;
+  --color-greenBg: #123321;
+  --color-red: #ff453a;
+  --color-redBg: #3a1a17;
+  --color-tag: #333333;
+  --color-kwBar: #202020;
+  --color-chip: #2a2a2a;
+}
+
 body {
   margin: 0;
-  background-color: #f5f5f7;
-  color: #1d1d1f;
+  background-color: var(--color-bg);
+  color: var(--color-text);
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: -0.011em;
+  transition: background-color 150ms ease, color 150ms ease;
 }
 
 .mono {
@@ -76,5 +103,5 @@ kbd {
   padding: 1px 5px;
   margin: 0 2px;
   color: var(--color-text2);
-  background: #fafafa;
+  background: var(--color-tag);
 }
