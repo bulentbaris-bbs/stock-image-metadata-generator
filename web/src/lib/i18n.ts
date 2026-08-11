@@ -28,6 +28,18 @@ const STRINGS: Record<string, Dict> = {
   refresh_title_btn: {
     en: 'Refresh title only', tr: 'Sadece başlığı yenile', de: 'Nur Titel aktualisieren', es: 'Actualizar solo el título', fr: 'Actualiser uniquement le titre', ru: 'Обновить только заголовок', zh: '仅刷新标题',
   },
+  refresh_meta_btn: {
+    en: 'Title & Description', tr: 'Başlık & Açıklama', de: 'Titel & Beschreibung', es: 'Título & Descripción', fr: 'Titre & Description', ru: 'Заголовок & Описание', zh: '标题和描述',
+  },
+  refresh_meta_tooltip: {
+    en: 'Regenerate title and description only (keywords unchanged)',
+    tr: 'Sadece başlık ve açıklamayı yenile (anahtar kelimeler değişmez)',
+    de: 'Nur Titel und Beschreibung neu generieren',
+    es: 'Regenerar solo título y descripción',
+    fr: 'Régénérer uniquement le titre et la description',
+    ru: 'Обновить только заголовок и описание',
+    zh: '仅重新生成标题和描述',
+  },
   refreshing: {
     en: 'Refreshing…', tr: 'Yenileniyor…', de: 'Wird aktualisiert…', es: 'Actualizando…', fr: 'Actualisation…', ru: 'Обновление…', zh: '正在刷新…',
   },

@@ -114,11 +114,20 @@ export function Toolbar({
             type="button"
             onClick={onRefreshTitleOnly}
             disabled={refreshingTitle || generating}
-            title="⌘R"
-            className="btn-press flex items-center gap-1.5 h-[34px] px-3.5 rounded-[9px] border border-border bg-card text-text text-[13px] font-medium hover:bg-bg disabled:opacity-50"
+            title={t('refresh_meta_tooltip')}
+            className="btn-press flex items-center gap-1.5 h-[34px] px-3 rounded-[9px] border border-border bg-card text-text text-xs font-medium hover:bg-bg disabled:opacity-50"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8a9 9 0 0 0-16-4.5M3 4v5h5" /><path d="M3 16a9 9 0 0 0 16 4.5M21 20v-5h-5" /></svg>
-            {refreshingTitle ? t('refreshing') : t('refresh_title_btn')}
+            {refreshingTitle ? (
+              <>
+                <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+                {t('refreshing')}
+              </>
+            ) : (
+              <>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8a9 9 0 0 0-16-4.5M3 4v5h5" /><path d="M3 16a9 9 0 0 0 16 4.5M21 20v-5h-5" /></svg>
+                {t('refresh_meta_btn')}
+              </>
+            )}
           </button>
           <button
             type="button"
@@ -127,8 +136,17 @@ export function Toolbar({
             title="⌘↵"
             className="btn-press flex items-center gap-1.5 h-[34px] px-3.5 rounded-[9px] bg-accent hover:bg-accentH text-white text-[13px] font-medium disabled:opacity-50"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8z" /><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" /></svg>
-            {generating ? `${t('generating')}${progressLabel}` : t('generate_btn')}
+            {generating ? (
+              <>
+                <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+                {t('generating')}{progressLabel}
+              </>
+            ) : (
+              <>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8z" /><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" /></svg>
+                {t('generate_btn')}
+              </>
+            )}
           </button>
           <div className="relative flex items-center gap-1 h-[34px] pl-2.5 pr-6 border border-border rounded-lg bg-card text-text2 text-[12.5px] font-medium hover:bg-bg" title={t('lang_select_title')}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3a13 13 0 0 1 0 18a13 13 0 0 1 0-18z" /></svg>
