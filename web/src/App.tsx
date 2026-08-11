@@ -28,7 +28,7 @@ import { ADOBE_MAX, ISTOCK_MAX, SHUTTER_MAX } from './lib/limits';
 import { base64JpegToFile, fileToBase64Jpeg, isVideo } from './lib/media';
 import { emptyRecord, getActiveGroqKeys } from './lib/storage';
 import { AppProvider, KB_STOPS, useApp, type TabId } from './state/AppContext';
-import type { FileEntry, MetadataRecord } from './types';
+import type { MetadataRecord } from './types';
 
 const TAB_ORDER: TabId[] = ['adobe', 'shutterstock', 'istock'];
 
