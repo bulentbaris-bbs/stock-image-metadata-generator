@@ -488,7 +488,7 @@ export async function apiMetadata(
 const KEYWORDS_BY_PLATFORM: Record<string, string> = {
   adobe: 'Adobe Stock (max 49 keywords, broad to specific)',
   shutterstock: 'Shutterstock (max 50 keywords, high commercial value)',
-  istock: 'iStock/Getty (max 50 keywords, Getty controlled vocabulary preferred)',
+  istock: 'iStock and Getty (max 50 keywords, Getty controlled vocabulary preferred)',
 };
 
 const KEYWORDS_PROMPT = `You are a microstock SEO expert. Generate optimized English keywords for {platform}.{hint}
@@ -502,7 +502,7 @@ Three-tier structure (critical for ranking and commercial sales):
 
 Rules (follow strictly):
 - Order strictly: positions 1–10 = anchors & user note terms; 11–34 = context; 35–50 = commercial/abstract concepts.
-- Use singular form only (e.g. "dog" not "dogs").
+- Use singular form only. NEVER combine singular and plural with a slash — write "wave" not "wave/waves", "dog" not "dog/dogs". Pick one form only.
 - Every entry must be a short keyword or keyword phrase (1–3 words max), NEVER a sentence.
 - VARIETY IS MANDATORY: Do NOT list repetitive synonyms of the same object. Pick 1 or 2 best terms for an object and expand into human presence, setting, mood, action, and industry.
 
