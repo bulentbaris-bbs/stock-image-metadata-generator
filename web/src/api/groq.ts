@@ -5,7 +5,7 @@ import type { SecondaryLanguage } from '../lib/languages';
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_VISION_MODEL = 'qwen/qwen3.6-27b';
-const GROQ_TEXT_MODEL = 'llama-3.3-70b-versatile';
+const GROQ_TEXT_MODEL = 'openai/gpt-oss-120b';
 const GROQ_REQUEST_MS = 90000;
 
 export interface AiCreds {
