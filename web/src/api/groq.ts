@@ -182,6 +182,8 @@ export async function groqText(
       { role: 'user', content: prompt },
     ],
     max_tokens: maxTokens,
+    reasoning_effort: 'low',
+    reasoning_format: 'hidden',
   };
   if (options?.jsonMode) {
     body.response_format = { type: 'json_object' };
