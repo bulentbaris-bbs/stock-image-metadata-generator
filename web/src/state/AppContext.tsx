@@ -19,6 +19,7 @@ import {
 } from '../api/groq';
 import type { UILang } from '../lib/i18n';
 import { getLanguage } from '../lib/languages';
+import { clearMediaCaches, revokeAllObjectUrls } from '../lib/media';
 import { deleteSharedIstockEntry, fetchSharedIstockLibrary, pushSharedIstockEntries } from '../lib/sharedIstockLibrary';
 import {
   getActiveGroqKeys,
@@ -151,7 +152,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setHint('');
   }, []);
 
-  const setFiles = useCallback((f: FileEntry[]) => setFilesState(f), []);
+  const setFiles = useCallback((f: FileEntry[]) => {
+    revokeAllObjectUrls();
+    clearMediaCaches();
+    setFilesState(f);
+  }, []);
   const toggleSelection = useCallback((id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);

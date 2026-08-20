@@ -1,3 +1,21 @@
+const objectUrls = new Set<string>();
+
+export function createTrackedObjectUrl(blob: Blob): string {
+  const url = URL.createObjectURL(blob);
+  objectUrls.add(url);
+  return url;
+}
+
+export function revokeTrackedObjectUrl(url: string): void {
+  URL.revokeObjectURL(url);
+  objectUrls.delete(url);
+}
+
+export function revokeAllObjectUrls(): void {
+  objectUrls.forEach(url => URL.revokeObjectURL(url));
+  objectUrls.clear();
+}
+
 /** Capture resolution for the small sidebar file-item thumb (displayed at 38x38, 2x+ for retina). */
 const THUMB_W = 120;
 const THUMB_H = 120;
@@ -15,6 +33,12 @@ const API_JPEG_QUALITY = 0.78;
 const b64Cache = new Map<string, string>();
 /** Cache of file → downscaled preview data URL, keyed by file identity + seek time. */
 const previewCache = new Map<string, string>();
+
+/** Clears the b64/preview caches — call when the file list is reset so stale entries don't linger. */
+export function clearMediaCaches(): void {
+  b64Cache.clear();
+  previewCache.clear();
+}
 
 export const ALLOWED_EXTENSIONS = ['jpeg', 'jpg', 'mov', 'mp4'];
 
