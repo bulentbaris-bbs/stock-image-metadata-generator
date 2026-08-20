@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useT } from '../lib/useT';
-import { getThumbnailUrl, isVideo, PREVIEW_H, PREVIEW_W } from '../lib/media';
+import { getPreviewUrl, isVideo } from '../lib/media';
 import { useApp } from '../state/AppContext';
 import type { FileEntry } from '../types';
 
@@ -11,23 +11,18 @@ export function PreviewImage({ entry }: { entry: FileEntry }) {
   const video = isVideo(entry.file);
   const frameOverride = videoFrameByFileId[entry.id];
   const [url, setUrl] = useState<string | null>(null);
-  const objectUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
-    let revoked = false;
-    getThumbnailUrl(entry.file, frameOverride, { w: PREVIEW_W, h: PREVIEW_H })
+    let cancelled = false;
+    getPreviewUrl(entry.file, frameOverride)
       .then((u) => {
-        objectUrlRef.current = u;
-        if (!revoked) setUrl(u);
+        if (!cancelled) setUrl(u);
       })
       .catch(() => {
-        if (!revoked) setUrl(null);
+        if (!cancelled) setUrl(null);
       });
     return () => {
-      revoked = true;
-      const u = objectUrlRef.current;
-      if (u?.startsWith('blob:')) URL.revokeObjectURL(u);
-      objectUrlRef.current = null;
+      cancelled = true;
     };
   }, [entry.id, entry.file, frameOverride]);
 

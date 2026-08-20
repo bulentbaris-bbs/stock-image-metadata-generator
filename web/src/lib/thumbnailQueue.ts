@@ -2,7 +2,7 @@
  * Thumbnail request queue: limits concurrent thumbnail generation
  * so many large videos don't overload the main thread.
  */
-const CONCURRENCY = 1;
+const CONCURRENCY = 3;
 
 let running = 0;
 const queue: Array<() => void> = [];
