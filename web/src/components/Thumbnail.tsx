@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 
 import { useT } from '../lib/useT';
 import { fileFormatLabel, formatFileSize, getThumbnailUrl, isVideo, THUMB_H, THUMB_W } from '../lib/media';
@@ -25,7 +25,7 @@ function StatusRing({ status, title }: { status: RingStatus; title?: string }) {
   return <div className="w-5 h-5 rounded-full border-[1.5px] border-dashed border-border shrink-0" title={title} />;
 }
 
-export function Thumbnail({
+function ThumbnailComponent({
   entry,
   selected,
   selectedForBatch,
@@ -41,8 +41,8 @@ export function Thumbnail({
   ringStatus: RingStatus;
   ringTitle?: string;
   collapsed?: boolean;
-  onClick: () => void;
-  onToggleBatch: () => void;
+  onClick: (id: string) => void;
+  onToggleBatch: (id: string) => void;
 }) {
   const { videoFrameByFileId, openFrameEditor, kbZone } = useApp();
   const t = useT();
@@ -98,11 +98,11 @@ export function Thumbnail({
         ref={itemRef}
         role="button"
         tabIndex={selected ? 0 : -1}
-        onClick={onClick}
+        onClick={() => onClick(entry.id)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            onClick();
+            onClick(entry.id);
           }
         }}
         className={`btn-press flex items-center gap-2.5 rounded-lg p-2 cursor-pointer border mb-0.5 ${selected ? 'bg-sel border-[#CFE3FA]' : 'border-transparent hover:bg-hover'}`}
@@ -128,7 +128,7 @@ export function Thumbnail({
           <button
             type="button"
             aria-label={selectedForBatch ? t('batch_select_remove') : t('batch_select_add')}
-            onClick={(e) => { e.stopPropagation(); onToggleBatch(); }}
+            onClick={(e) => { e.stopPropagation(); onToggleBatch(entry.id); }}
             className="btn-press absolute -top-1 -left-1 z-10 rounded-full border border-border bg-card w-4 h-4 flex items-center justify-center text-text2 shadow"
           >
             {selectedForBatch ? <span className="text-green" style={{ fontSize: 8 }}>✓</span> : null}
@@ -158,3 +158,7 @@ export function Thumbnail({
     </div>
   );
 }
+
+/** Memoized: with FileList passing stable (useCallback) onClick/onToggleBatch, only the
+ *  thumbnails whose props actually changed (e.g. selected toggling) re-render on click. */
+export const Thumbnail = memo(ThumbnailComponent);

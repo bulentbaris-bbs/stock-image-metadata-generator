@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useT } from '../lib/useT';
 import { getLanguage } from '../lib/languages';
 import { ADOBE_MAX, ISTOCK_MAX, SHUTTER_MAX } from '../lib/limits';
-import { KB_STOPS, useApp, type TabId } from '../state/AppContext';
+import { KB_STOPS, useApp, useAppMeta, type TabId } from '../state/AppContext';
 import type { KeywordKey } from '../types';
 import { KeywordChips } from './KeywordChips';
 
@@ -22,9 +22,9 @@ export function KeywordTabs({ onError }: { onError?: (msg: string) => void }) {
   const [refreshingTr, setRefreshingTr] = useState(false);
   const [keywordFilter, setKeywordFilter] = useState('');
   const [libraryAdded, setLibraryAdded] = useState<number | null>(null);
+  const metadataByFileId = useAppMeta();
   const {
     currentFileId,
-    metadataByFileId,
     updateMetadata,
     activeTab,
     setActiveTab,

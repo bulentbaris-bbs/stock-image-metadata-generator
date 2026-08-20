@@ -52,7 +52,6 @@ interface AppState {
   currentFileId: string | null;
   /** IDs of files selected for batch metadata generation (e.g. checkboxes). */
   selectedIds: Set<string>;
-  metadataByFileId: Record<string, MetadataRecord>;
   settings: Settings;
   istockMap: IStockMap;
   hint: string;
@@ -106,6 +105,15 @@ function getFileId(file: File): string {
   return `${file.name}-${file.size}-${file.lastModified}`;
 }
 
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+function debouncedSave(data: Record<string, MetadataRecord>) {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveMetadataByFileId(data);
+    saveTimer = null;
+  }, 500);
+}
+
 export type Theme = 'light' | 'dark';
 const THEME_KEY = 'theme';
 
@@ -118,6 +126,10 @@ function loadTheme(): Theme {
 }
 
 const AppContext = createContext<(AppState & AppActions) | null>(null);
+/** Isolated from AppContext: metadataByFileId changes far more often (every keystroke/generation)
+ *  than settings/istockMap/etc, so consumers that only need metadata shouldn't re-render on those
+ *  changes, and vice versa. */
+const AppMetaContext = createContext<Record<string, MetadataRecord> | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [files, setFilesState] = useState<FileEntry[]>([]);
@@ -126,6 +138,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [metadataByFileId, setMetadataByFileId] = useState<Record<string, MetadataRecord>>(
     () => (typeof window !== 'undefined' ? loadMetadataByFileId() : {}),
   );
+  /** Mirrors metadataByFileId for callbacks below that only need to read the latest value
+   *  (e.g. inside a translate request) without being recreated on every edit. */
+  const metadataByFileIdRef = useRef(metadataByFileId);
+  useEffect(() => {
+    metadataByFileIdRef.current = metadataByFileId;
+  }, [metadataByFileId]);
   const [settings, setSettingsState] = useState<Settings>(loadSettings());
   const [istockMap, setIstockMapState] = useState<IStockMap>(loadIStockMap());
   const [videoFrameByFileId, setVideoFrameByFileId] = useState<Record<string, number>>(
@@ -194,7 +212,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setMetadataByFileId((prev) => {
       if (!options?.skipUndo && prev[id]) lastUndoRef.current = { fileId: id, record: prev[id] };
       const next = { ...prev, [id]: record };
-      if (typeof window !== 'undefined') saveMetadataByFileId(next);
+      if (typeof window !== 'undefined') debouncedSave(next);
       return next;
     });
   }, []);
@@ -205,7 +223,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!current) return prev;
       if (current) lastUndoRef.current = { fileId: id, record: current };
       const next = { ...prev, [id]: { ...current, ...patch } };
-      if (typeof window !== 'undefined') saveMetadataByFileId(next);
+      if (typeof window !== 'undefined') debouncedSave(next);
       return next;
     });
   }, []);
@@ -326,7 +344,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const refreshSecondaryKeywordField = useCallback(
     async (fileId: string, keys: { en: KeywordKey; secondary: KeywordKey }, enFull: string[]) => {
-      const record = metadataByFileId[fileId];
+      const record = metadataByFileIdRef.current[fileId];
       if (!record) return;
       const groqKeys = getActiveGroqKeys(settings.groq_api_keys_keywords);
       if (groqKeys.length === 0) return;
@@ -346,12 +364,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       updateMetadata(fileId, { [keys.secondary]: secFull, secondary_lang: lang.code });
     },
-    [metadataByFileId, updateMetadata, settings],
+    [updateMetadata, settings],
   );
 
   const refreshSecondaryAllKeywords = useCallback(
     async (fileId: string) => {
-      const record = metadataByFileId[fileId];
+      const record = metadataByFileIdRef.current[fileId];
       if (!record) return;
       const groqKeys = getActiveGroqKeys(settings.groq_api_keys_keywords);
       if (groqKeys.length === 0) return;
@@ -372,12 +390,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         secondary_lang: lang.code,
       });
     },
-    [metadataByFileId, updateMetadata, settings],
+    [updateMetadata, settings],
   );
 
   const refreshSecondaryTitleDescription = useCallback(
     async (fileId: string, recordFromCaller?: MetadataRecord | null) => {
-      const record = recordFromCaller ?? metadataByFileId[fileId];
+      const record = recordFromCaller ?? metadataByFileIdRef.current[fileId];
       if (!record) return;
       const groqKeys = getActiveGroqKeys(settings.groq_api_keys_meta);
       if (groqKeys.length === 0) return;
@@ -392,12 +410,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       updateMetadata(fileId, patch);
     },
-    [metadataByFileId, settings, updateMetadata],
+    [settings, updateMetadata],
   );
 
   const value = useMemo(
     () => ({
-      files, currentFileId, selectedIds, metadataByFileId, settings, istockMap, hint,
+      files, currentFileId, selectedIds, settings, istockMap, hint,
       istockBaselineEpoch, istockEnBaselineByFileIdRef, videoFrameByFileId, frameEditorFileId,
       activeTab, kbZone, kbStopIndex, kbStopRegistryRef, theme,
       setFiles, addFiles, setCurrentFileId, toggleSelection, selectAll, deselectAll,
@@ -410,15 +428,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setActiveTab, setKbZone, setKbStopIndex, registerKbStop, unregisterKbStop,
       saveTheme, toggleTheme,
     }),
-    [files, currentFileId, selectedIds, metadataByFileId, settings, istockMap, hint, istockBaselineEpoch, videoFrameByFileId, frameEditorFileId, activeTab, kbZone, kbStopIndex, theme, saveSettingsAction, saveIstockMapAction, removeIstockEntryAction, refreshSharedIstockLibraryAction, refreshSecondaryKeywordField, refreshSecondaryTitleDescription, refreshSecondaryAllKeywords, undo, setVideoFrame, openFrameEditor, closeFrameEditor, registerKbStop, unregisterKbStop, saveTheme, toggleTheme]
+    [files, currentFileId, selectedIds, settings, istockMap, hint, istockBaselineEpoch, videoFrameByFileId, frameEditorFileId, activeTab, kbZone, kbStopIndex, theme, saveSettingsAction, saveIstockMapAction, removeIstockEntryAction, refreshSharedIstockLibraryAction, refreshSecondaryKeywordField, refreshSecondaryTitleDescription, refreshSecondaryAllKeywords, undo, setVideoFrame, openFrameEditor, closeFrameEditor, registerKbStop, unregisterKbStop, saveTheme, toggleTheme]
   );
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider value={value}>
+      <AppMetaContext.Provider value={metadataByFileId}>{children}</AppMetaContext.Provider>
+    </AppContext.Provider>
+  );
 }
 
 // eslint-disable-next-line react-refresh/only-export-components -- context hook co-located with its provider is the standard pattern here.
 export function useApp(): AppState & AppActions {
   const ctx = useContext(AppContext);
   if (!ctx) throw new Error('useApp must be used within AppProvider');
+  return ctx;
+}
+
+/** Isolated from useApp() — only re-renders consumers when metadataByFileId itself changes. */
+// eslint-disable-next-line react-refresh/only-export-components -- context hook co-located with its provider is the standard pattern here.
+export function useAppMeta(): Record<string, MetadataRecord> {
+  const ctx = useContext(AppMetaContext);
+  if (!ctx) throw new Error('useAppMeta must be used within AppProvider');
   return ctx;
 }

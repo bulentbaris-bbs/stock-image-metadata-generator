@@ -27,14 +27,15 @@ import { getLanguage, isEnglishOnly } from './lib/languages';
 import { ADOBE_MAX, ISTOCK_MAX, SHUTTER_MAX } from './lib/limits';
 import { base64JpegToFile, fileToBase64Jpeg, isVideo } from './lib/media';
 import { emptyRecord, getActiveGroqKeys } from './lib/storage';
-import { AppProvider, KB_STOPS, useApp, type TabId } from './state/AppContext';
+import { AppProvider, KB_STOPS, useApp, useAppMeta, type TabId } from './state/AppContext';
 import type { MetadataRecord } from './types';
 
 const TAB_ORDER: TabId[] = ['adobe', 'shutterstock', 'istock'];
 
 function AppContent() {
+  const metadataByFileId = useAppMeta();
   const {
-    files, currentFileId, setCurrentFileId, selectedIds, metadataByFileId, setMetadata, updateMetadata, undo, settings, hint, istockMap, videoFrameByFileId,
+    files, currentFileId, setCurrentFileId, selectedIds, setMetadata, updateMetadata, undo, settings, hint, istockMap, videoFrameByFileId,
     kbZone, kbStopIndex, setKbZone, setKbStopIndex, activeTab, setActiveTab, kbStopRegistryRef,
   } = useApp();
   const t = useT();

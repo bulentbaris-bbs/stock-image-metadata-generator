@@ -1,12 +1,34 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { useT } from '../lib/useT';
 import { getPreviewUrl, isVideo } from '../lib/media';
 import { useApp } from '../state/AppContext';
 import type { FileEntry } from '../types';
 
+/** Warms the preview cache (and gets the browser to decode the frame) for a neighboring file, without displaying anything. */
+function NeighborPreloader({ file, seekTimeOverride }: { file: File; seekTimeOverride?: number }) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getPreviewUrl(file, seekTimeOverride).then((u) => {
+      if (!cancelled) setUrl(u);
+    }, () => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [file, seekTimeOverride]);
+
+  if (!url) return null;
+  return (
+    <div style={{ width: 0, height: 0, overflow: 'hidden', visibility: 'hidden' }} aria-hidden>
+      <img src={url} alt="" decoding="async" loading="eager" />
+    </div>
+  );
+}
+
 export function PreviewImage({ entry }: { entry: FileEntry }) {
-  const { videoFrameByFileId, openFrameEditor } = useApp();
+  const { files, videoFrameByFileId, openFrameEditor } = useApp();
   const t = useT();
   const video = isVideo(entry.file);
   const frameOverride = videoFrameByFileId[entry.id];
@@ -26,6 +48,16 @@ export function PreviewImage({ entry }: { entry: FileEntry }) {
     };
   }, [entry.id, entry.file, frameOverride]);
 
+  // Preload the previous/next file's preview so Up/Down navigation feels instant —
+  // the browser has already decoded the frame by the time the user gets there.
+  const { prevEntry, nextEntry } = useMemo(() => {
+    const idx = files.findIndex((f) => f.id === entry.id);
+    return {
+      prevEntry: idx > 0 ? files[idx - 1] : undefined,
+      nextEntry: idx >= 0 && idx < files.length - 1 ? files[idx + 1] : undefined,
+    };
+  }, [files, entry.id]);
+
   return (
     <div className="shrink-0 w-[180px] h-full">
       <div
@@ -33,7 +65,7 @@ export function PreviewImage({ entry }: { entry: FileEntry }) {
         onClick={video ? () => openFrameEditor(entry.id) : undefined}
       >
         {url ? (
-          <img src={url} alt="" className="w-full h-full object-cover" />
+          <img src={url} alt="" decoding="async" loading="lazy" className="w-full h-full object-cover" />
         ) : (
           <span className="text-2xl" aria-hidden>{video ? '🎬' : '🖼'}</span>
         )}
@@ -46,6 +78,8 @@ export function PreviewImage({ entry }: { entry: FileEntry }) {
           <p className="text-[10.5px] text-white/95 truncate leading-tight">{entry.name}</p>
         </div>
       </div>
+      {prevEntry && <NeighborPreloader key={`prev-${prevEntry.id}`} file={prevEntry.file} seekTimeOverride={videoFrameByFileId[prevEntry.id]} />}
+      {nextEntry && <NeighborPreloader key={`next-${nextEntry.id}`} file={nextEntry.file} seekTimeOverride={videoFrameByFileId[nextEntry.id]} />}
     </div>
   );
 }

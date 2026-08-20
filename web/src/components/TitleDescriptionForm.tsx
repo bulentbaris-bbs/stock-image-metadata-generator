@@ -4,13 +4,14 @@ import { PreviewImage } from './PreviewImage';
 import { TrInline } from './TrInline';
 import { getLanguage, isEnglishOnly } from '../lib/languages';
 import { useT } from '../lib/useT';
-import { useApp } from '../state/AppContext';
+import { useApp, useAppMeta } from '../state/AppContext';
 
 const TITLE_MIN = 150;
 const TITLE_MAX = 200;
 
 export function TitleDescriptionForm() {
-  const { files, currentFileId, metadataByFileId, updateMetadata, settings } = useApp();
+  const { files, currentFileId, updateMetadata, settings } = useApp();
+  const metadataByFileId = useAppMeta();
   const t = useT();
   const englishOnly = isEnglishOnly(getLanguage(settings.target_language));
   if (!currentFileId) return null;

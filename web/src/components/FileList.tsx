@@ -1,13 +1,14 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { useT } from '../lib/useT';
 import { metadataRingStatus } from '../lib/limits';
 import { getFileId, sortedAllowedFiles } from '../lib/media';
-import { useApp } from '../state/AppContext';
+import { useApp, useAppMeta } from '../state/AppContext';
 import { Thumbnail } from './Thumbnail';
 
 export function FileList({ collapsed, search }: { collapsed: boolean; search: string }) {
-  const { files, setFiles, currentFileId, setCurrentFileId, selectedIds, toggleSelection, metadataByFileId, setKbZone } = useApp();
+  const { files, setFiles, currentFileId, setCurrentFileId, selectedIds, toggleSelection, setKbZone } = useApp();
+  const metadataByFileId = useAppMeta();
   const t = useT();
 
   const handleDrop = (e: React.DragEvent) => {
@@ -21,6 +22,15 @@ export function FileList({ collapsed, search }: { collapsed: boolean; search: st
   const handleDropzoneClick = () => {
     document.querySelector<HTMLInputElement>('input[type="file"]')?.click();
   };
+
+  const handleSelect = useCallback((id: string) => {
+    setCurrentFileId(id);
+    setKbZone('sidebar');
+  }, [setCurrentFileId, setKbZone]);
+
+  const handleToggleBatch = useCallback((id: string) => {
+    toggleSelection(id);
+  }, [toggleSelection]);
 
   const visibleFiles = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -64,8 +74,8 @@ export function FileList({ collapsed, search }: { collapsed: boolean; search: st
               ringStatus={status}
               ringTitle={status === 'warn' ? t('ring_warn_title') : undefined}
               collapsed={collapsed}
-              onClick={() => { setCurrentFileId(entry.id); setKbZone('sidebar'); }}
-              onToggleBatch={() => toggleSelection(entry.id)}
+              onClick={handleSelect}
+              onToggleBatch={handleToggleBatch}
             />
           );
         })}
