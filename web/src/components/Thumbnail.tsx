@@ -25,7 +25,7 @@ function StatusRing({ status, title }: { status: RingStatus; title?: string }) {
   return <div className="w-5 h-5 rounded-full border-[1.5px] border-dashed border-border shrink-0" title={title} />;
 }
 
-function ThumbnailComponent({
+export const Thumbnail = memo(function Thumbnail({
   entry,
   selected,
   selectedForBatch,
@@ -79,11 +79,8 @@ function ThumbnailComponent({
       });
     return () => {
       revoked = true;
-      const u = objectUrlRef.current;
-      if (u?.startsWith('blob:')) URL.revokeObjectURL(u);
-      objectUrlRef.current = null;
     };
-  }, [entry.id, entry.file, isInView, frameOverride]);
+  }, [entry.id, isInView, frameOverride]);
 
   // Real DOM focus follows keyboard selection while in the sidebar zone.
   useEffect(() => {
@@ -157,8 +154,10 @@ function ThumbnailComponent({
       </div>
     </div>
   );
-}
-
-/** Memoized: with FileList passing stable (useCallback) onClick/onToggleBatch, only the
- *  thumbnails whose props actually changed (e.g. selected toggling) re-render on click. */
-export const Thumbnail = memo(ThumbnailComponent);
+}, (prev, next) =>
+  prev.selected === next.selected &&
+  prev.selectedForBatch === next.selectedForBatch &&
+  prev.ringStatus === next.ringStatus &&
+  prev.collapsed === next.collapsed &&
+  prev.entry.id === next.entry.id
+);

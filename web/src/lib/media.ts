@@ -38,6 +38,7 @@ const previewCache = new Map<string, string>();
 export function clearMediaCaches(): void {
   b64Cache.clear();
   previewCache.clear();
+  thumbnailCache.clear();
 }
 
 export const ALLOWED_EXTENSIONS = ['jpeg', 'jpg', 'mov', 'mp4'];
@@ -278,12 +279,27 @@ export function base64JpegToFile(b64: string, name = 'frame.jpg'): File {
   return new File([blob], name, { type: 'image/jpeg' });
 }
 
-export function getThumbnailUrl(
+const thumbnailCache = new Map<string, string>();
+
+export async function getThumbnailUrl(
   file: File,
   seekTimeOverride?: number,
   maxSize: { w: number; h: number } = { w: THUMB_W, h: THUMB_H }
 ): Promise<string> {
-  if (isImage(file)) return Promise.resolve(URL.createObjectURL(file));
+  const key = `${file.name}-${file.size}-${file.lastModified}-${seekTimeOverride ?? 'mid'}-${maxSize.w}`;
+  if (thumbnailCache.has(key)) return thumbnailCache.get(key)!;
+
+  const url = await getThumbnailUrlRaw(file, seekTimeOverride, maxSize);
+  thumbnailCache.set(key, url);
+  return url;
+}
+
+function getThumbnailUrlRaw(
+  file: File,
+  seekTimeOverride?: number,
+  maxSize: { w: number; h: number } = { w: THUMB_W, h: THUMB_H }
+): Promise<string> {
+  if (isImage(file)) return Promise.resolve(createTrackedObjectUrl(file));
   if (isVideo(file)) {
     return new Promise((resolve, reject) => {
       const video = document.createElement('video');

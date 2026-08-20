@@ -23,7 +23,7 @@ export function FileList({ collapsed, search }: { collapsed: boolean; search: st
     document.querySelector<HTMLInputElement>('input[type="file"]')?.click();
   };
 
-  const handleSelect = useCallback((id: string) => {
+  const handleClick = useCallback((id: string) => {
     setCurrentFileId(id);
     setKbZone('sidebar');
   }, [setCurrentFileId, setKbZone]);
@@ -37,7 +37,10 @@ export function FileList({ collapsed, search }: { collapsed: boolean; search: st
     return q ? files.filter((f) => f.name.toLowerCase().includes(q)) : files;
   }, [files, search]);
 
-  const doneCount = files.filter((f) => metadataRingStatus(metadataByFileId[f.id]) !== 'pending').length;
+  const doneCount = useMemo(
+    () => files.filter((f) => metadataRingStatus(metadataByFileId[f.id]) !== 'pending').length,
+    [files, metadataByFileId]
+  );
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -74,7 +77,7 @@ export function FileList({ collapsed, search }: { collapsed: boolean; search: st
               ringStatus={status}
               ringTitle={status === 'warn' ? t('ring_warn_title') : undefined}
               collapsed={collapsed}
-              onClick={handleSelect}
+              onClick={handleClick}
               onToggleBatch={handleToggleBatch}
             />
           );
