@@ -12,6 +12,8 @@ import {
   applyTrMap,
   buildUniqueEnList,
   fillKeywordsToMax,
+  initKwKeyPool,
+  initMetaKeyPool,
   type AiCreds,
   type GroqOnlyCreds,
 } from './api/groq';
@@ -105,6 +107,8 @@ function AppContent() {
   const handleGenerate = useCallback(async () => {
     const metaGroqKeys = getActiveGroqKeys(settings.groq_api_keys_meta);
     const kwGroqKeys = getActiveGroqKeys(settings.groq_api_keys_keywords);
+    initMetaKeyPool(metaGroqKeys);
+    initKwKeyPool(kwGroqKeys);
     const openRouterKey = settings.openrouter_api_key?.trim();
     const lang = getLanguage(settings.target_language);
     const englishOnly = isEnglishOnly(lang);

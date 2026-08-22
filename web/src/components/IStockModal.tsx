@@ -72,7 +72,24 @@ export function IStockModal({ open, onClose }: { open: boolean; onClose: () => v
     removeIstockEntry(key);
   };
   const handleBulkImport = () => {
-    const lines = bulkText.split('\n').map((l) => l.trim()).filter(Boolean);
+    const lines = bulkText
+      .split('\n')
+      .map((l) => l.trim().replace(/^\uFEFF/, ''))
+      .filter(Boolean)
+      .filter((l, index) => {
+        if (index === 0) {
+          const lower = l.toLowerCase();
+          if (
+            lower.includes('kirmizikelime') ||
+            lower.includes('yenikelime') ||
+            lower.includes('source') ||
+            lower.includes('original') ||
+            lower.startsWith('word,')
+          )
+            return false;
+        }
+        return true;
+      });
     let added = 0;
     let skipped = 0;
     const next = { ...istockMap };
@@ -107,6 +124,19 @@ export function IStockModal({ open, onClose }: { open: boolean; onClose: () => v
           {refreshing && <span className="text-text3 text-xs">{t('istock_syncing')}</span>}
         </div>
         <p className="text-text3 text-xs mb-2">{t('istock_shared_note')}</p>
+        <a
+          href="/bbs-studio-istock-eslestirici.zip"
+          download="bbs-studio-istock-eslestirici.zip"
+          title={t('extension_download_tooltip')}
+          className="flex items-center gap-1.5 text-xs text-accent hover:underline mb-2 w-fit"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          {t('extension_download_btn')}
+        </a>
         <div className="flex flex-col gap-2 mb-4 p-3 rounded-lg bg-card2 border border-border">
           <div className="flex gap-2 items-center">
             <div className="relative flex-1">
@@ -177,6 +207,29 @@ export function IStockModal({ open, onClose }: { open: boolean; onClose: () => v
                     {bulkResult.skipped > 0 && `, ${bulkResult.skipped} atlandı`}
                   </span>
                 )}
+                <label className="text-xs text-accent cursor-pointer flex items-center gap-1">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  CSV dosyası yükle
+                  <input
+                    type="file"
+                    accept=".csv"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        setBulkText((ev.target?.result as string) ?? '');
+                      };
+                      reader.readAsText(file, 'UTF-8');
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
               </div>
             </div>
           )}

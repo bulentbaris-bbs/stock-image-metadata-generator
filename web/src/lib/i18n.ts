@@ -409,6 +409,24 @@ const STRINGS: Record<string, Dict> = {
   istock_modal_title: {
     en: 'iStock Keyword Mapping', tr: 'iStock Keyword Eşleştirmesi', de: 'iStock-Keyword-Zuordnung', es: 'Asignación de palabras clave de iStock', fr: 'Correspondance des mots-clés iStock', ru: 'Сопоставление ключевых слов iStock', zh: 'iStock 关键词映射',
   },
+  extension_download_btn: {
+    en: 'Download Chrome Extension',
+    tr: 'Chrome Eklentisini İndir',
+    de: 'Chrome-Erweiterung herunterladen',
+    es: 'Descargar extensión de Chrome',
+    fr: "Télécharger l'extension Chrome",
+    ru: 'Скачать расширение Chrome',
+    zh: '下载 Chrome 扩展程序',
+  },
+  extension_download_tooltip: {
+    en: 'This Chrome extension automatically detects red (rejected) keywords on the iStock/Getty contributor panel. When you replace a red keyword with the correct one, it records the pair (old → new). Later, you can import all pairs into the iStock Library here with one click.',
+    tr: 'Bu Chrome eklentisi, iStock/Getty yükleme panelinde kırmızı (reddedilen) kelimeleri otomatik olarak yakalar. Kırmızı bir kelimeyi doğrusuyla değiştirdiğinizde, çifti (eski → yeni) kaydeder. Daha sonra tüm çiftleri buradan tek tıkla iStock Kütüphanesine aktarabilirsiniz.',
+    de: 'Diese Chrome-Erweiterung erkennt automatisch rote (abgelehnte) Keywords im iStock/Getty-Contributor-Panel. Wenn Sie ein rotes Keyword durch das richtige ersetzen, wird das Paar (alt → neu) gespeichert. Später können Sie alle Paare hier mit einem Klick in die iStock-Bibliothek importieren.',
+    es: 'Esta extensión de Chrome detecta automáticamente las palabras clave rojas (rechazadas) en el panel de colaboradores de iStock/Getty. Cuando reemplaza una palabra clave roja con la correcta, registra el par (antiguo → nuevo). Luego puede importar todos los pares a la Biblioteca iStock aquí con un clic.',
+    fr: 'Cette extension Chrome détecte automatiquement les mots-clés rouges (rejetés) dans le panneau contributeur iStock/Getty. Lorsque vous remplacez un mot-clé rouge par le bon, elle enregistre la paire (ancien → nouveau). Vous pouvez ensuite importer toutes les paires dans la bibliothèque iStock ici en un clic.',
+    ru: 'Это расширение Chrome автоматически обнаруживает красные (отклонённые) ключевые слова на панели участника iStock/Getty. Когда вы заменяете красное слово правильным, оно записывает пару (старое → новое). Затем вы можете импортировать все пары в библиотеку iStock здесь одним кликом.',
+    zh: '此 Chrome 扩展程序自动检测 iStock/Getty 贡献者面板上的红色（被拒绝的）关键词。当您将红色关键词替换为正确的词时，它会记录该对（旧 → 新）。之后，您可以一键将所有对导入此处的 iStock 库。',
+  },
   generic_word_placeholder: {
     en: 'Generic word', tr: 'Genel kelime', de: 'Allgemeines Wort', es: 'Palabra genérica', fr: 'Mot générique', ru: 'Общее слово', zh: '通用词',
   },

@@ -8,6 +8,22 @@ const GROQ_VISION_MODEL = 'qwen/qwen3.6-27b';
 const GROQ_TEXT_MODEL = 'openai/gpt-oss-120b';
 const GROQ_REQUEST_MS = 90000;
 
+let metaKeyPool: KeyPool | null = null;
+let kwKeyPool: KeyPool | null = null;
+
+export function initMetaKeyPool(keys: string[]): void {
+  metaKeyPool = new KeyPool(keys);
+}
+export function initKwKeyPool(keys: string[]): void {
+  kwKeyPool = new KeyPool(keys);
+}
+export function getMetaKeyPool(): KeyPool | null {
+  return metaKeyPool;
+}
+export function getKwKeyPool(): KeyPool | null {
+  return kwKeyPool;
+}
+
 export interface AiCreds {
   groqKeys: string[];
   openRouterKey?: string;
@@ -68,12 +84,13 @@ function parseResetSeconds(header: string | null): number | null {
 }
 
 async function groqChat(body: Record<string, unknown>, keys: string[], label: string, lang: UILang): Promise<string> {
+  // Eğer dışarıdan pool geliyorsa onu kullan, yoksa geçici pool oluştur
   const pool = new KeyPool(keys);
-  const maxAttempts = pool.size * 2 + 3;
+  const maxAttempts = pool.size + 2;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const key = pool.next();
     if (!key) {
-      const waitMs = Math.max(1000, Math.min(pool.earliestAvailableAt() - Date.now(), 60000));
+      const waitMs = Math.max(500, Math.min(pool.earliestAvailableAt() - Date.now(), 10000));
       await sleep(waitMs);
       continue;
     }
@@ -120,7 +137,7 @@ async function groqChat(body: Record<string, unknown>, keys: string[], label: st
       const retryAfter = Number(res.headers.get('retry-after'));
       const resetTokens = parseResetSeconds(res.headers.get('x-ratelimit-reset-tokens'));
       const resetRequests = parseResetSeconds(res.headers.get('x-ratelimit-reset-requests'));
-      let cooldownMs = 20000;
+      let cooldownMs = 5000;
       if (Number.isFinite(retryAfter) && retryAfter > 0) cooldownMs = retryAfter * 1000;
       else if (resetTokens || resetRequests) cooldownMs = Math.max(resetTokens ?? 0, resetRequests ?? 0);
       pool.markCooldown(key, Math.max(cooldownMs, 1000));
@@ -466,7 +483,7 @@ export async function apiMetadata(
   const prompt = buildMetadataVisionPrompt(hint, lang);
   const jsonRetrySuffix =
     '\n\nCRITICAL: Your entire reply must be ONE JSON object only, starting with { and ending with }. Keys: title_en, title_secondary, description_en, description_secondary. No markdown, no thinking tags, no other text.';
-  const raw = await groqVision(b64, prompt + jsonRetrySuffix, creds, 2048);
+  const raw = await groqVision(b64, prompt + jsonRetrySuffix, creds, 1200);
   let jsonStr = extractFirstJsonObject(raw);
   if (!jsonStr && raw.trim()) {
     jsonStr = await repairMetadataJsonWithText(creds, raw);
@@ -612,7 +629,7 @@ export async function apiKeywords(
   const hintTxt = hint.trim() ? `\nExtra Context / User Note (PRIORITY KEYWORDS): ${hint}` : '';
   const platformNote = KEYWORDS_BY_PLATFORM[platform] ?? 'microstock platforms';
   const prompt = KEYWORDS_PROMPT.replace('{platform}', platformNote).replace('{hint}', hintTxt);
-  const raw = await groqVision(b64, prompt, creds, 1800);
+  const raw = await groqVision(b64, prompt, creds, 900);
   return topUpKeywords(parseKeywordCsv(raw), creds, hint);
 }
 
@@ -623,7 +640,7 @@ export async function apiKeywordsAllPlatforms(
 ): Promise<string[]> {
   const hintTxt = hint.trim() ? `\nExtra Context / User Note (PRIORITY KEYWORDS): ${hint}` : '';
   const prompt = KEYWORDS_PROMPT.replace('{platform}', KEYWORDS_ALL_PLATFORMS).replace('{hint}', hintTxt);
-  const raw = await groqVision(b64, prompt, creds, 1800);
+  const raw = await groqVision(b64, prompt, creds, 900);
   return topUpKeywords(parseKeywordCsv(raw), creds, hint);
 }
 
