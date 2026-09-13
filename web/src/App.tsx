@@ -11,6 +11,7 @@ import {
   apiTranslateUniqueKwToMap,
   applyTrMap,
   buildUniqueEnList,
+  fillKeywordsToMax,
   initKwKeyPool,
   initMetaKeyPool,
   topUpKeywords,
@@ -174,10 +175,10 @@ function AppContent() {
             allKw = await topUpKeywords(allKw, kwCreds, hintText, meta.title_en);
           }
 
-          // Groq yetesizse son çare Gemini vision
-          if (allKw.length < 20) {
+          // Groq da 49-50 hedefine ulaşamadıysa son çare Gemini vision
+          if (allKw.length < Math.max(ADOBE_MAX, SHUTTER_MAX, ISTOCK_MAX)) {
             const groqKw = await apiKeywordsAllPlatforms(b64, kwCreds, hintText, geminiKey);
-            allKw = groqKw;
+            allKw = fillKeywordsToMax(allKw, Math.max(ADOBE_MAX, SHUTTER_MAX, ISTOCK_MAX), groqKw);
           }
 
           adobeEn = allKw.slice(0, ADOBE_MAX);
@@ -193,9 +194,9 @@ function AppContent() {
           if (directKw.length < ADOBE_MAX) {
             directKw = await topUpKeywords([], kwCreds, hintText, meta.title_en);
           }
-          if (directKw.length < 20) {
+          if (directKw.length < Math.max(ADOBE_MAX, SHUTTER_MAX, ISTOCK_MAX)) {
             const groqKw = await apiKeywordsAllPlatforms(b64, kwCreds, hintText, geminiKey);
-            directKw = groqKw;
+            directKw = fillKeywordsToMax(directKw, Math.max(ADOBE_MAX, SHUTTER_MAX, ISTOCK_MAX), groqKw);
           }
           adobeEn = directKw.slice(0, ADOBE_MAX);
           shutterEn = directKw.slice(0, SHUTTER_MAX);
