@@ -17,7 +17,6 @@ export async function geminiVision(
     body: JSON.stringify({
       model: GEMINI_VISION_MODEL,
       max_tokens: maxTokens,
-      reasoning_effort: 'none',
       messages: [{
         role: 'user',
         content: [
