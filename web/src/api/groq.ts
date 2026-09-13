@@ -1,4 +1,4 @@
-import { geminiVision } from './gemini';
+import { geminiText, geminiVision } from './gemini';
 import { openRouterText, openRouterVision } from './openrouter';
 import { translate, type UILang } from '../lib/i18n';
 import { KeyPool } from '../lib/keyPool';
@@ -622,6 +622,41 @@ Output: exactly one line of comma-separated keywords, nothing else.`;
     return fillKeywordsToMax(existing, KEYWORDS_TARGET, more);
   } catch {
     return existing;
+  }
+}
+
+/** Eksik keyword'leri başlığa göre Gemini text ile tamamlar (ucuz) — başarısız olursa Groq'a düşer. */
+export async function topUpKeywordsWithGemini(
+  existing: string[],
+  title: string,
+  hint: string,
+  geminiKey: string,
+  target = 50
+): Promise<string[]> {
+  if (existing.length >= target) return existing.slice(0, target);
+  const need = target - existing.length;
+  const hintTxt = hint.trim() ? `\nContext: ${hint.trim()}` : '';
+
+  const prompt = `Microstock SEO expert. Generate exactly ${need} additional English keywords.
+Image title: "${title}"${hintTxt}
+Existing keywords (do NOT repeat or use synonyms): ${existing.join(', ')}
+
+Rules:
+- Singular form only (wave not waves)
+- 1-3 words each
+- Relevant to the image title
+- Include commercial terms (safety, logistics, efficiency etc.)
+
+Output: exactly one line of ${need} comma-separated keywords, nothing else.`;
+
+  try {
+    const raw = await geminiText(prompt, geminiKey, 300);
+    const whitelist = new Set(existing.map((e) => e.toLowerCase().trim()));
+    const more = parseKeywordCsv(raw, whitelist);
+    return fillKeywordsToMax(existing, target, more);
+  } catch {
+    // Gemini başarısız olursa Groq ile dene
+    return topUpKeywords(existing, { groqKeys: [], lang: 'tr' } as AiCreds, hint, title);
   }
 }
 

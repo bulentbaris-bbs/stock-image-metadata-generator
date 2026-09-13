@@ -15,6 +15,7 @@ import {
   initKwKeyPool,
   initMetaKeyPool,
   topUpKeywords,
+  topUpKeywordsWithGemini,
   type AiCreds,
   type GroqOnlyCreds,
 } from './api/groq';
@@ -169,13 +170,15 @@ function AppContent() {
 
           meta = metaResult;
 
-          // Eksik keyword varsa başlığı referans alarak Groq text ile tamamla
+          // Eksik keyword varsa başlığı referans alarak tamamla — Gemini text (ucuz) varsa onu, yoksa Groq text kullan
           let allKw = epKw;
           if (allKw.length < ADOBE_MAX) {
-            allKw = await topUpKeywords(allKw, kwCreds, hintText, meta.title_en);
+            allKw = geminiKey
+              ? await topUpKeywordsWithGemini(allKw, meta.title_en, hintText, geminiKey, Math.max(ADOBE_MAX, SHUTTER_MAX, ISTOCK_MAX))
+              : await topUpKeywords(allKw, kwCreds, hintText, meta.title_en);
           }
 
-          // Groq da 49-50 hedefine ulaşamadıysa son çare Gemini vision
+          // Hâlâ 49-50 hedefine ulaşamadıysa son çare Gemini vision
           if (allKw.length < Math.max(ADOBE_MAX, SHUTTER_MAX, ISTOCK_MAX)) {
             const groqKw = await apiKeywordsAllPlatforms(b64, kwCreds, hintText, geminiKey);
             allKw = fillKeywordsToMax(allKw, Math.max(ADOBE_MAX, SHUTTER_MAX, ISTOCK_MAX), groqKw);
@@ -192,7 +195,9 @@ function AppContent() {
           meta = resMeta;
           let directKw = epKwDirect;
           if (directKw.length < ADOBE_MAX) {
-            directKw = await topUpKeywords([], kwCreds, hintText, meta.title_en);
+            directKw = geminiKey
+              ? await topUpKeywordsWithGemini([], meta.title_en, hintText, geminiKey, Math.max(ADOBE_MAX, SHUTTER_MAX, ISTOCK_MAX))
+              : await topUpKeywords([], kwCreds, hintText, meta.title_en);
           }
           if (directKw.length < Math.max(ADOBE_MAX, SHUTTER_MAX, ISTOCK_MAX)) {
             const groqKw = await apiKeywordsAllPlatforms(b64, kwCreds, hintText, geminiKey);

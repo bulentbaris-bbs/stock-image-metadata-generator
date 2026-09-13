@@ -49,3 +49,35 @@ export async function geminiVision(
 
   return data?.choices?.[0]?.message?.content?.trim() ?? '';
 }
+
+export async function geminiText(
+  prompt: string,
+  apiKey: string,
+  maxTokens = 400
+): Promise<string> {
+  const res = await fetch(GEMINI_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: GEMINI_VISION_MODEL,
+      max_tokens: maxTokens,
+      messages: [{ role: 'user', content: prompt }]
+    }),
+    signal: AbortSignal.timeout(GEMINI_REQUEST_MS)
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Gemini text hata (${res.status}): ${err.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  if (data.usage) {
+    const input = data.usage.prompt_tokens ?? 0;
+    const output = data.usage.completion_tokens ?? 0;
+    const cost = ((input * 0.30) + (output * 2.50)) / 1_000_000 * 38;
+    console.log(`[Gemini Text] input: ${input}, output: ${output} | ~${cost.toFixed(4)} TL`);
+  }
+  return data?.choices?.[0]?.message?.content?.trim() ?? '';
+}
