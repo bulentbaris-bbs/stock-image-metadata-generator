@@ -1,5 +1,5 @@
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
-const GEMINI_VISION_MODEL = 'gemini-3.6-flash';
+const GEMINI_VISION_MODEL = 'gemini-3.5-flash-lite';
 const GEMINI_REQUEST_MS = 60000;
 
 export async function geminiVision(
@@ -17,18 +17,14 @@ export async function geminiVision(
     body: JSON.stringify({
       model: GEMINI_VISION_MODEL,
       max_tokens: maxTokens,
+      reasoning_effort: 'none',
       messages: [{
         role: 'user',
         content: [
           { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${b64}` } },
           { type: 'text', text: prompt }
         ]
-      }],
-      generationConfig: {
-        thinkingConfig: {
-          thinkingLevel: 'minimal'
-        }
-      }
+      }]
     }),
     signal: AbortSignal.timeout(GEMINI_REQUEST_MS)
   });
