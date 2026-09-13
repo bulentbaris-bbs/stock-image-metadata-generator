@@ -145,48 +145,61 @@ function AppContent() {
 
         // API 1 ve API 2 Paralel Çalıştırma
         if (epId && epSecret) {
-          const epTask = async () => {
+          const epTask = async (): Promise<string[]> => {
             const fileForEp = isVideo(entry.file) ? base64JpegToFile(b64, 'frame.jpg') : entry.file;
             const epResult = await apiEverypixels(fileForEp, epId, epSecret, {}, lang.code as UILang);
-            const allKw = everypixelToKeywordStrings(epResult);
-            let aEn = allKw.slice(0, ADOBE_MAX);
-            let sEn = allKw.slice(0, SHUTTER_MAX);
-            let iEn = mapIstock(allKw.slice(0, ISTOCK_MAX));
-            if (aEn.length < ADOBE_MAX || sEn.length < SHUTTER_MAX || iEn.length < ISTOCK_MAX) {
-              const topped = await topUpKeywords(allKw, kwCreds, hintText);
-              aEn = topped.slice(0, ADOBE_MAX);
-              sEn = topped.slice(0, SHUTTER_MAX);
-              iEn = mapIstock(topped.slice(0, ISTOCK_MAX));
-            }
-            return { adobeEn: aEn, shutterEn: sEn, istockEn: iEn };
+            return everypixelToKeywordStrings(epResult);
           };
-          [meta, { adobeEn, shutterEn, istockEn }] = await Promise.all([
+
+          // Paralel: Gemini metadata + Everypixels
+          const [metaResult, epKw] = await Promise.all([
             apiMetadata(b64, metaCreds, hintText, lang, geminiKey),
             epTask().catch(async (epError) => {
               const isLimit = epError instanceof Error &&
                 (epError.message.includes('429') || epError.message.includes('limit'));
               everypixelWarnings.push(
                 isLimit
-                  ? `${entry.name}: Everypixels limiti doldu — Gemini ile üretiliyor`
-                  : `${entry.name}: Everypixels başarısız — Gemini ile üretiliyor`
+                  ? `${entry.name}: Everypixels limiti doldu — başlık baz alınarak tamamlanıyor`
+                  : `${entry.name}: Everypixels başarısız — başlık baz alınarak tamamlanıyor`
               );
-              const f = await apiKeywordsAllPlatforms(b64, kwCreds, hintText, geminiKey);
-              return {
-                adobeEn: f.slice(0, ADOBE_MAX),
-                shutterEn: f.slice(0, SHUTTER_MAX),
-                istockEn: mapIstock(f.slice(0, ISTOCK_MAX))
-              };
+              return [] as string[];
             })
           ]);
+
+          meta = metaResult;
+
+          // Eksik keyword varsa başlığı referans alarak Groq text ile tamamla
+          let allKw = epKw;
+          if (allKw.length < ADOBE_MAX) {
+            allKw = await topUpKeywords(allKw, kwCreds, hintText, meta.title_en);
+          }
+
+          // Groq yetesizse son çare Gemini vision
+          if (allKw.length < 20) {
+            const groqKw = await apiKeywordsAllPlatforms(b64, kwCreds, hintText, geminiKey);
+            allKw = groqKw;
+          }
+
+          adobeEn = allKw.slice(0, ADOBE_MAX);
+          shutterEn = allKw.slice(0, SHUTTER_MAX);
+          istockEn = mapIstock(allKw.slice(0, ISTOCK_MAX));
         } else {
-          const [resMeta, rawKw] = await Promise.all([
+          const [resMeta, epKwDirect] = await Promise.all([
             apiMetadata(b64, metaCreds, hintText, lang, geminiKey),
-            apiKeywordsAllPlatforms(b64, kwCreds, hintText, geminiKey),
+            Promise.resolve([] as string[])
           ]);
           meta = resMeta;
-          adobeEn = rawKw.slice(0, ADOBE_MAX);
-          shutterEn = rawKw.slice(0, SHUTTER_MAX);
-          istockEn = mapIstock(rawKw.slice(0, ISTOCK_MAX));
+          let directKw = epKwDirect;
+          if (directKw.length < ADOBE_MAX) {
+            directKw = await topUpKeywords([], kwCreds, hintText, meta.title_en);
+          }
+          if (directKw.length < 20) {
+            const groqKw = await apiKeywordsAllPlatforms(b64, kwCreds, hintText, geminiKey);
+            directKw = groqKw;
+          }
+          adobeEn = directKw.slice(0, ADOBE_MAX);
+          shutterEn = directKw.slice(0, SHUTTER_MAX);
+          istockEn = mapIstock(directKw.slice(0, ISTOCK_MAX));
         }
 
         setMetadata(entry.id, {

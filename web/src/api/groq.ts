@@ -591,18 +591,32 @@ function parseKeywordCsv(raw: string, whitelistTerms?: Set<string>): string[] {
 const KEYWORDS_TARGET = 50;
 
 /** Everypixel eksik kelime dönerse veya hiç kullanılmazsa kalan kısmı Groq ile 50'ye tamamlar. */
-export async function topUpKeywords(existing: string[], creds: AiCreds, hint: string): Promise<string[]> {
+export async function topUpKeywords(
+  existing: string[],
+  creds: AiCreds,
+  hint: string,
+  title?: string
+): Promise<string[]> {
   if (existing.length >= KEYWORDS_TARGET) return existing.slice(0, KEYWORDS_TARGET);
   const need = KEYWORDS_TARGET - existing.length;
-  const hintTxt = hint.trim() ? `\nContext/User Note: ${hint.trim()}` : '';
-  const prompt = `You are a microstock SEO expert. Based on this existing list of English keywords and User Note, generate ${need} ADDITIONAL distinct English keywords (1-3 words max, varied concepts: human presence, location, events, industry). Extract key terms from the User Note if missing. Include commercial concepts (e.g. logistics, safety, efficiency). Do NOT repeat existing keywords or synonyms. Singular form only.${hintTxt}
+  const hintTxt = hint.trim() ? `\nContext: ${hint.trim()}` : '';
+  const titleTxt = title?.trim() ? `\nImage title: "${title.trim()}"` : '';
 
-Existing keywords: ${existing.join(', ')}
+  const prompt = `Microstock SEO expert. Generate ${need} additional English keywords.${titleTxt}${hintTxt}
 
-Output format: exactly one line of comma-separated keywords, nothing else.`;
+Existing keywords (do NOT repeat): ${existing.join(', ')}
+
+Rules:
+- Singular form only
+- 1-3 words each
+- Relevant to the image title and context
+- Include commercial terms where relevant
+- No synonyms of existing keywords
+
+Output: exactly one line of comma-separated keywords, nothing else.`;
+
   try {
-    const raw = await groqText(prompt, creds, 600);
-    // Existing (Everypixel) kelimeleri whitelist olarak gönderip filtrelerden muaf tutuyoruz:
+    const raw = await groqText(prompt, creds, 400);
     const whitelist = new Set(existing.map((e) => e.toLowerCase().trim()));
     const more = parseKeywordCsv(raw, whitelist);
     return fillKeywordsToMax(existing, KEYWORDS_TARGET, more);
