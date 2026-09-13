@@ -40,6 +40,10 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
     }
   }, [open, settings]);
   const handleSave = () => {
+    if (!geminiKey.trim()) {
+      alert(t('gemini_key_required_alert'));
+      return;
+    }
     saveSettings({
       ...settings,
       gemini_api_key: geminiKey.trim(),
@@ -64,6 +68,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               <div>
                 <label className="text-text2 text-sm block mb-1">
                   <FieldLabel tip={t('gemini_key_tip')}>{t('gemini_key_label')}</FieldLabel>
+                  <span className="text-red-500"> *</span>
                 </label>
                 <input
                   type="password"
@@ -72,6 +77,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                   placeholder={t('gemini_key_placeholder')}
                   className="w-full h-9 rounded-lg bg-input border border-border text-text text-sm px-3 outline-none focus:ring-1 focus:ring-accent"
                 />
+                <p className="text-[11px] text-red-400 mt-1">{t('gemini_key_required_note')}</p>
               </div>
             </div>
           </div>

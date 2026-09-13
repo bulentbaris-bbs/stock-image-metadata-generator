@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { apiEverypixels, everypixelToKeywordStrings } from './api/everypixels';
+import { apiTranslateUniqueKwToMapWithGemini, geminiTranslate } from './api/gemini';
 import {
   apiKeywordsAllPlatforms,
   apiMetadata,
@@ -113,11 +114,14 @@ function AppContent() {
     initKwKeyPool(kwGroqKeys);
     const openRouterKey = settings.openrouter_api_key?.trim();
     const geminiKey = settings.gemini_api_key?.trim() || undefined;
+    if (!geminiKey) {
+      setError('Gemini API key zorunludur. Lütfen Ayarlar\'dan ekleyin.');
+      return;
+    }
     const lang = getLanguage(settings.target_language);
     const englishOnly = isEnglishOnly(lang);
     const metaCreds: GroqOnlyCreds = { groqKeys: metaGroqKeys, lang: lang.code as UILang };
     const kwCreds: AiCreds = { groqKeys: kwGroqKeys, openRouterKey, lang: lang.code as UILang };
-    if (metaGroqKeys.length === 0) { setError(t('err_meta_needs_groq')); return; }
     
     const orderedEntries = files.filter((f) => selectedIds.has(f.id));
     const toProcess = orderedEntries.length > 0 ? orderedEntries : (currentEntry ? [currentEntry] : []);
@@ -225,13 +229,21 @@ function AppContent() {
             updateMetadata(entry.id, { translating: true });
             try {
               const uniqueEn = buildUniqueEnList(adobeEn, shutterEn, istockEn);
-              const secMap = await apiTranslateUniqueKwToMap(uniqueEn, metaCreds, lang);
+              const hasGroq = metaGroqKeys.length > 0;
+              const secMap = hasGroq
+                ? await apiTranslateUniqueKwToMap(uniqueEn, metaCreds, lang)
+                : await apiTranslateUniqueKwToMapWithGemini(uniqueEn, geminiKey, lang);
+              const filteredMap = new Map(
+                [...secMap.entries()].filter(([k, v]) =>
+                  v.toLowerCase().trim() !== k.toLowerCase().trim()
+                )
+              );
               updateMetadata(entry.id, {
                 title_secondary: meta.title_secondary,
                 description_secondary: meta.description_secondary,
-                adobe_keywords_secondary: applyTrMap(adobeEn, secMap),
-                shutter_keywords_secondary: applyTrMap(shutterEn, secMap),
-                istock_keywords_secondary: applyTrMap(istockEn, secMap),
+                adobe_keywords_secondary: applyTrMap(adobeEn, filteredMap),
+                shutter_keywords_secondary: applyTrMap(shutterEn, filteredMap),
+                istock_keywords_secondary: applyTrMap(istockEn, filteredMap),
                 translating: false
               });
             } catch { updateMetadata(entry.id, { translating: false }); }
@@ -245,9 +257,10 @@ function AppContent() {
 
   const handleRefreshTitleOnly = useCallback(async () => {
     const groqKeys = getActiveGroqKeys(settings.groq_api_keys_meta);
-    if (groqKeys.length === 0) { setError(t('err_meta_needs_groq')); return; }
+    const geminiKey = settings.gemini_api_key?.trim() || undefined;
+    if (!geminiKey) { setError('Gemini API key zorunludur. Lütfen Ayarlar\'dan ekleyin.'); return; }
     if (!currentEntry) { setError(t('err_select_file_first')); return; }
-    
+
     const currentRecord = metadataByFileId[currentFileId ?? ''];
     const existingContext = currentRecord ? ` Previous title to avoid repeating: "${currentRecord.title_en}"` : '';
 
@@ -256,22 +269,30 @@ function AppContent() {
     try {
       const b64 = await fileToBase64Jpeg(currentEntry.file, videoFrameByFileId[currentEntry.id]);
       const lang = getLanguage(settings.target_language);
-      const geminiKey = settings.gemini_api_key?.trim() || undefined;
       const meta = await apiMetadata(b64, { groqKeys, lang: lang.code as UILang }, (hint.trim() + existingContext).trim(), lang, geminiKey);
-      
+
       const payload: Partial<MetadataRecord> = { title_en: meta.title_en, description_en: meta.description_en };
-      
+
       if (isEnglishOnly(lang)) {
         updateMetadata(currentEntry.id, { ...payload, title_secondary: '', description_secondary: '' });
       } else {
         updateMetadata(currentEntry.id, { ...payload, translating: true });
+        const hasGroq = groqKeys.length > 0;
         void (async () => {
           try {
-            const [trTitle, trDesc] = await Promise.all([
-              apiTranslate(meta.title_en, lang.code as 'tr' | 'en', { groqKeys, lang: lang.code as UILang }),
-              apiTranslate(meta.description_en, lang.code as 'tr' | 'en', { groqKeys, lang: lang.code as UILang })
-            ]);
-            updateMetadata(currentEntry.id, { title_secondary: trTitle, description_secondary: trDesc, translating: false });
+            if (hasGroq) {
+              const [trTitle, trDesc] = await Promise.all([
+                apiTranslate(meta.title_en, lang.code as 'tr' | 'en', { groqKeys, lang: lang.code as UILang }),
+                apiTranslate(meta.description_en, lang.code as 'tr' | 'en', { groqKeys, lang: lang.code as UILang })
+              ]);
+              updateMetadata(currentEntry.id, { title_secondary: trTitle, description_secondary: trDesc, translating: false });
+            } else {
+              const [trTitle, trDesc] = await Promise.all([
+                geminiTranslate(meta.title_en, lang, geminiKey),
+                geminiTranslate(meta.description_en, lang, geminiKey)
+              ]);
+              updateMetadata(currentEntry.id, { title_secondary: trTitle, description_secondary: trDesc, translating: false });
+            }
           } catch { updateMetadata(currentEntry.id, { translating: false }); }
         })();
       }

@@ -1,3 +1,5 @@
+import type { SecondaryLanguage } from '../lib/languages';
+
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
 const GEMINI_VISION_MODEL = 'gemini-3.5-flash-lite';
 const GEMINI_REQUEST_MS = 60000;
@@ -80,4 +82,49 @@ export async function geminiText(
     console.log(`[Gemini Text] input: ${input}, output: ${output} | ~${cost.toFixed(4)} TL`);
   }
   return data?.choices?.[0]?.message?.content?.trim() ?? '';
+}
+
+export async function geminiTranslate(
+  text: string,
+  lang: SecondaryLanguage,
+  apiKey: string
+): Promise<string> {
+  const prompt = `Translate to ${lang.name}. Return ONLY the translation, nothing else:\n\n${text}`;
+  return geminiText(prompt, apiKey, 300);
+}
+
+export async function apiTranslateUniqueKwToMapWithGemini(
+  uniqueEn: string[],
+  apiKey: string,
+  lang: SecondaryLanguage
+): Promise<Map<string, string>> {
+  const chunks: string[][] = [];
+  for (let i = 0; i < uniqueEn.length; i += 40) {
+    chunks.push(uniqueEn.slice(i, i + 40));
+  }
+
+  const map = new Map<string, string>();
+
+  for (const chunk of chunks) {
+    const numbered = chunk.map((k, i) => `${i + 1}. ${k}`).join('\n');
+    const prompt = `Translate each numbered keyword to ${lang.name}.
+Output ONLY the translated words, one per line, same numbers.
+No explanations, no commentary.
+
+${numbered}`;
+
+    try {
+      const raw = await geminiText(prompt, apiKey, 400);
+      const lines = raw.split('\n').filter(Boolean);
+      lines.forEach((line, i) => {
+        const match = line.match(/^\d+[.)]\s*(.+)/);
+        const translation = match ? match[1].trim() : line.trim();
+        if (chunk[i] && translation) {
+          map.set(chunk[i].toLowerCase(), translation);
+        }
+      });
+    } catch { /* chunk başarısız, atla */ }
+  }
+
+  return map;
 }
