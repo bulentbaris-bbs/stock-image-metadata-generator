@@ -11,9 +11,9 @@ import {
   apiTranslateUniqueKwToMap,
   applyTrMap,
   buildUniqueEnList,
-  fillKeywordsToMax,
   initKwKeyPool,
   initMetaKeyPool,
+  topUpKeywords,
   type AiCreds,
   type GroqOnlyCreds,
 } from './api/groq';
@@ -153,10 +153,10 @@ function AppContent() {
             let sEn = allKw.slice(0, SHUTTER_MAX);
             let iEn = mapIstock(allKw.slice(0, ISTOCK_MAX));
             if (aEn.length < ADOBE_MAX || sEn.length < SHUTTER_MAX || iEn.length < ISTOCK_MAX) {
-              const groqKw = await apiKeywordsAllPlatforms(b64, kwCreds, hintText, geminiKey);
-              aEn = fillKeywordsToMax(aEn, ADOBE_MAX, groqKw);
-              sEn = fillKeywordsToMax(sEn, SHUTTER_MAX, groqKw);
-              iEn = fillKeywordsToMax(iEn, ISTOCK_MAX, mapIstock(groqKw));
+              const topped = await topUpKeywords(allKw, kwCreds, hintText);
+              aEn = topped.slice(0, ADOBE_MAX);
+              sEn = topped.slice(0, SHUTTER_MAX);
+              iEn = mapIstock(topped.slice(0, ISTOCK_MAX));
             }
             return { adobeEn: aEn, shutterEn: sEn, istockEn: iEn };
           };
