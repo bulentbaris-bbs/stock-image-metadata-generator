@@ -627,14 +627,17 @@ Output format: exactly one line of comma-separated keywords, nothing else.`;
 /** Groq ile Sıfırdan Anahtar Kelime Üretimi (Everypixel olmadığında çalışır) */
 export async function apiKeywords(
   b64: string,
-  creds: AiCreds,
+  creds: AiCreds | GroqOnlyCreds,
   hint = '',
-  platform: 'adobe' | 'shutterstock' | 'istock' = 'adobe'
+  platform: 'adobe' | 'shutterstock' | 'istock' = 'adobe',
+  geminiKey?: string
 ): Promise<string[]> {
   const hintTxt = hint.trim() ? `\nExtra Context / User Note (PRIORITY KEYWORDS): ${hint}` : '';
   const platformNote = KEYWORDS_BY_PLATFORM[platform] ?? 'microstock platforms';
   const prompt = KEYWORDS_PROMPT.replace('{platform}', platformNote).replace('{hint}', hintTxt);
-  const raw = await groqVision(b64, prompt, creds, 900);
+  const raw = geminiKey
+    ? await geminiVision(b64, prompt, geminiKey, 900)
+    : await groqVision(b64, prompt, creds, 900);
   return topUpKeywords(parseKeywordCsv(raw), creds, hint);
 }
 
