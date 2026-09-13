@@ -219,36 +219,23 @@ export async function groqText(
 // ============================================================================
 
 function buildMetadataInstructions(lang: SecondaryLanguage): string {
-  return `You are a professional stock photo metadata expert. Analyze this image for Adobe Stock, Shutterstock, iStock.
+  return `You are a stock photo metadata expert. Analyze this image.
 
-Consider: current market trends, buyer search behavior, commercial appeal, and SEO best practices.
-Focus on what buyers actually search for on Adobe Stock, Shutterstock, and iStock.
-
-Output format (critical): Return ONLY valid JSON with ALL four keys as non-empty strings. Never omit a field. Never use null or empty strings.
+Return ONLY valid JSON with ALL four keys:
 {"title_en":"...","title_secondary":"...","description_en":"...","description_secondary":"..."}
-(title_secondary and description_secondary must be written in ${lang.name}.)
 
-Title (title_en / title_secondary) — what is visible (agency-style, buyer-facing):
-- State clearly what the image is about: main subject, action, and setting. Use "Who, What, Where, When" where helpful (one or two complete sentences if needed).
-- Target length (both title_en and title_secondary): **Aim for ~150 characters** (including spaces) as the ideal; keep roughly **130–180**; **hard maximum 200**. When the scene supports it, do **not** stop under **~120** with a thin one-liner—add subject, action, setting, and concrete anchors (gear, place type, shot feel) until you approach the target.
-- Strong anchors (use when relevant to the image): region/country or named place if clearly inferable; environment (underwater, factory floor, etc.); shot feel (e.g. POV, wide shot, underwater shot) if it matches the frame; visible gear or role (hard hat, freediving, etc.).
-- For faceless or abstract commercial scenes, prefer phrasing like "unrecognizable …" when appropriate and name the theme (e.g. occupational health and safety concept, corporate wellness concept).
-- Avoid weak bare patterns like "Man doing X" or "X in Y" with no extra detail when the image supports richer wording.
-- Natural prose only; do NOT stack comma-separated keywords or tags. Readable sentences beat keyword lists.
-- Tone (critical) for titles: Direct, declarative stock headlines—no hedging anywhere in title_en or title_secondary in either language (e.g. no probably, possibly, maybe, likely, seems, appears, might, could, perhaps, or their ${lang.name} equivalents). Do not use inferential bridges such as "given the presence of," "suggesting that," or "which implies"—state what is visible (e.g. hard hat on desk, office, professional attire) as concrete facts, not as guesses.
-- Avoid vague closing clichés in titles (e.g. "sense of productivity," "spirit of collaboration")—prefer specific visible anchors instead.
-- Both title_en and title_secondary must convey the same meaning.
+TITLE rules:
+- 150-180 characters, hard max 200
+- State subject, action, setting concisely
+- Direct declarative tone, no hedging (no probably/maybe/seems/appears)
+- title_secondary in ${lang.name}, same meaning as title_en
 
-Description (description_en / description_secondary) — complementary detail ONLY (REQUIRED, never empty):
-- The title summarizes the scene; descriptions MUST add different information focused on topic and content, not generic production talk. Prioritize: what is happening (actions, sequence), who or what is involved (roles, objects, equipment, symbols), relationships between elements, setting and context (place type, industry, activity), and the narrative or theme the image communicates. Pick at least two concrete content angles the title does not already state.
-- Do NOT center the description on lighting, mood, atmosphere, color palette, or composition unless one short phrase supports the subject (e.g. clinical lighting for a medical scene). Avoid filler about "warm tones" or "wide shot" when the image calls for subject detail instead.
-- You may briefly mention typical buyer contexts (e.g. campaigns, editorial) only as a closing clause if space allows—not as the main substance.
-- Tone (critical): Write in direct, declarative stock-copy style—state what the image shows. Do NOT use hedging or vague uncertainty in either language (e.g. probably, possibly, maybe, likely, seems, appears, might, could, perhaps, or their ${lang.name} equivalents). If a specific label is not visible, use concrete but general wording (e.g. coastal road, industrial interior) instead of guessing with qualifiers.
-- Never open descriptions with hedging or speculation (e.g. not "Probably…", "Likely…", "It appears…"); use present-tense, affirmative sentences that read as factual stock copy about what is in the frame.
-- Do not use hedging or inferential phrasing anywhere in the description body (not only the first words): avoid "likely," "given the presence of," "suggesting," "appears to be," "seems to," "may be working in." If props imply an industry, name the visible objects/setting directly.
-- Avoid weak abstract closers such as "convey a sense of industry and productivity" or "sense of collaboration"—replace with concrete visible detail or buyer use the image actually supports.
-- Length: 220–350 characters each (minimum 200, hard maximum 400). Write at least 2–3 full sentences covering different content angles. description_secondary must be written in ${lang.name}; description_en in English.
-- Do NOT paste or lightly rephrase the title. No duplicate sentences from the title.`;
+DESCRIPTION rules:
+- 220-350 characters (min 200, max 400), 2-3 sentences
+- Add detail NOT in title: actions, objects, context, theme
+- No mood/lighting/color filler unless essential
+- Direct tone, no hedging
+- description_secondary in ${lang.name}`;
 }
 
 export function buildMetadataVisionPrompt(hint: string, lang: SecondaryLanguage): string {
