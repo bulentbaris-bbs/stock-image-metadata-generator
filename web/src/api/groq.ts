@@ -477,7 +477,7 @@ async function finalizeMetadataRecord(
 /** Sadece Başlık ve Açıklama Üretimi (Groq API 1) */
 export async function apiMetadata(
   b64: string,
-  creds: AiCreds,
+  creds: AiCreds | GroqOnlyCreds,
   hint: string,
   lang: SecondaryLanguage,
   geminiKey?: string
@@ -640,7 +640,7 @@ export async function apiKeywords(
 
 export async function apiKeywordsAllPlatforms(
   b64: string,
-  creds: AiCreds,
+  creds: AiCreds | GroqOnlyCreds,
   hint = '',
   geminiKey?: string
 ): Promise<string[]> {

@@ -353,10 +353,22 @@ const STRINGS: Record<string, Dict> = {
     en: '••••••••', tr: '••••••••', de: '••••••••', es: '••••••••', fr: '••••••••', ru: '••••••••', zh: '••••••••',
   },
   settings_group_meta_title: {
-    en: 'Title & Description', tr: 'Başlık & Açıklama', de: 'Titel & Beschreibung', es: 'Título y descripción', fr: 'Titre et description', ru: 'Заголовок и описание', zh: '标题与描述',
+    en: 'Content Generation', tr: 'İçerik Üretimi', de: 'Inhaltserstellung', es: 'Generación de contenido', fr: 'Génération de contenu', ru: 'Генерация контента', zh: '内容生成',
   },
   settings_group_keywords_title: {
     en: 'Keywords', tr: 'Anahtar Kelimeler', de: 'Keywords', es: 'Palabras clave', fr: 'Mots-clés', ru: 'Ключевые слова', zh: '关键词',
+  },
+  settings_group_translate_title: {
+    en: 'Translation', tr: 'Çeviri', de: 'Übersetzung', es: 'Traducción', fr: 'Traduction', ru: 'Перевод', zh: '翻译',
+  },
+  groq_translate_key_tip: {
+    en: 'Used only to translate the title, description and keywords into the secondary language. Free.',
+    tr: 'Sadece başlık, açıklama ve anahtar kelimelerin ikincil dile çevirisi için kullanılır. Ücretsizdir.',
+    de: 'Wird nur verwendet, um Titel, Beschreibung und Keywords in die Zweitsprache zu übersetzen. Kostenlos.',
+    es: 'Se usa solo para traducir el título, la descripción y las palabras clave al idioma secundario. Gratis.',
+    fr: "Utilisé uniquement pour traduire le titre, la description et les mots-clés dans la langue secondaire. Gratuit.",
+    ru: 'Используется только для перевода заголовка, описания и ключевых слов на второй язык. Бесплатно.',
+    zh: '仅用于将标题、描述和关键词翻译为第二语言。免费。',
   },
   groq_primary_key_label: {
     en: 'Groq primary key', tr: 'Groq asıl key', de: 'Groq-Hauptschlüssel', es: 'Clave Groq principal', fr: 'Clé Groq principale', ru: 'Основной ключ Groq', zh: 'Groq 主密钥',

@@ -1,14 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { useT } from '../lib/useT';
-import { MAX_GROQ_KEYS_PER_GROUP } from '../lib/storage';
 import { useApp } from '../state/AppContext';
-
-function padKeys(keys: string[]): string[] {
-  const next = [...keys];
-  while (next.length < MAX_GROQ_KEYS_PER_GROUP) next.push('');
-  return next.slice(0, MAX_GROQ_KEYS_PER_GROUP);
-}
 
 /** Small (?) icon that reveals an explanation tooltip on hover. */
 function InfoTip({ text }: { text: string }) {
@@ -34,41 +27,27 @@ function FieldLabel({ children, tip }: { children: React.ReactNode; tip: string 
 export function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { settings, saveSettings } = useApp();
   const t = useT();
-  const [metaKeys, setMetaKeys] = useState<string[]>(() => padKeys([]));
-  const [kwKeys, setKwKeys] = useState<string[]>(() => padKeys([]));
-  const [openRouterKey, setOpenRouterKey] = useState('');
   const [geminiKey, setGeminiKey] = useState('');
+  const [groqKey, setGroqKey] = useState('');
   const [epId, setEpId] = useState('');
   const [epSecret, setEpSecret] = useState('');
   useEffect(() => {
     if (open) {
-      setMetaKeys(padKeys(settings.groq_api_keys_meta));
-      setKwKeys(padKeys(settings.groq_api_keys_keywords));
-      setOpenRouterKey(settings.openrouter_api_key);
       setGeminiKey(settings.gemini_api_key ?? '');
-      setEpId(settings.everypixels_id);
-      setEpSecret(settings.everypixels_secret);
+      setGroqKey(settings.groq_api_keys_meta?.[0] ?? '');
+      setEpId(settings.everypixels_id ?? '');
+      setEpSecret(settings.everypixels_secret ?? '');
     }
   }, [open, settings]);
-  const setOneMetaKey = (i: number, v: string) => {
-    const next = [...metaKeys];
-    next[i] = v;
-    setMetaKeys(next);
-  };
-  const setOneKwKey = (i: number, v: string) => {
-    const next = [...kwKeys];
-    next[i] = v;
-    setKwKeys(next);
-  };
   const handleSave = () => {
     saveSettings({
       ...settings,
-      groq_api_keys_meta: metaKeys.map((k) => k.trim()).filter(Boolean),
-      groq_api_keys_keywords: kwKeys.map((k) => k.trim()).filter(Boolean),
-      openrouter_api_key: openRouterKey.trim(),
       gemini_api_key: geminiKey.trim(),
+      groq_api_keys_meta: [groqKey.trim()].filter(Boolean),
+      groq_api_keys_keywords: [groqKey.trim()].filter(Boolean),
       everypixels_id: epId.trim(),
       everypixels_secret: epSecret.trim(),
+      openrouter_api_key: '',
     });
     onClose();
   };
@@ -82,42 +61,6 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           <div className="border border-border rounded-lg p-3.5">
             <h3 className="text-text font-semibold text-sm mb-3">{t('settings_group_meta_title')}</h3>
             <div className="space-y-3">
-              <div>
-                <label className="text-text2 text-sm block mb-1">
-                  <FieldLabel tip={t('groq_primary_key_meta_tip')}>{t('groq_primary_key_label')}</FieldLabel>
-                </label>
-                <input
-                  type="password"
-                  value={metaKeys[0] ?? ''}
-                  onChange={(e) => setOneMetaKey(0, e.target.value)}
-                  placeholder={t('groq_primary_key_placeholder')}
-                  className="w-full h-9 rounded-lg bg-input border border-border text-text text-sm px-3 outline-none focus:ring-1 focus:ring-accent"
-                />
-              </div>
-              <div>
-                <label className="text-text2 text-sm block mb-1">
-                  <FieldLabel tip={t('groq_fallback_key_tip')}>{t('groq_fallback_key_label')}</FieldLabel>
-                </label>
-                <input
-                  type="password"
-                  value={metaKeys[1] ?? ''}
-                  onChange={(e) => setOneMetaKey(1, e.target.value)}
-                  placeholder={t('groq_fallback_key_placeholder')}
-                  className="w-full h-9 rounded-lg bg-input border border-border text-text text-sm px-3 outline-none focus:ring-1 focus:ring-accent"
-                />
-              </div>
-              <div>
-                <label className="text-text2 text-sm block mb-1">
-                  <FieldLabel tip={t('openrouter_group_tip')}>{t('openrouter_label')}</FieldLabel>
-                </label>
-                <input
-                  type="password"
-                  value={openRouterKey}
-                  onChange={(e) => setOpenRouterKey(e.target.value)}
-                  placeholder={t('openrouter_placeholder')}
-                  className="w-full h-9 rounded-lg bg-input border border-border text-text text-sm px-3 outline-none focus:ring-1 focus:ring-accent"
-                />
-              </div>
               <div>
                 <label className="text-text2 text-sm block mb-1">
                   <FieldLabel tip={t('gemini_key_tip')}>{t('gemini_key_label')}</FieldLabel>
@@ -159,27 +102,21 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                   className="w-full h-9 rounded-lg bg-input border border-border text-text text-sm px-3 outline-none focus:ring-1 focus:ring-accent"
                 />
               </div>
+            </div>
+          </div>
+
+          <div className="border border-border rounded-lg p-3.5">
+            <h3 className="text-text font-semibold text-sm mb-3">{t('settings_group_translate_title')}</h3>
+            <div className="space-y-3">
               <div>
                 <label className="text-text2 text-sm block mb-1">
-                  <FieldLabel tip={t('groq_primary_key_keywords_tip')}>{t('groq_primary_key_label')}</FieldLabel>
+                  <FieldLabel tip={t('groq_translate_key_tip')}>{t('groq_primary_key_label')}</FieldLabel>
                 </label>
                 <input
                   type="password"
-                  value={kwKeys[0] ?? ''}
-                  onChange={(e) => setOneKwKey(0, e.target.value)}
+                  value={groqKey}
+                  onChange={(e) => setGroqKey(e.target.value)}
                   placeholder={t('groq_primary_key_placeholder')}
-                  className="w-full h-9 rounded-lg bg-input border border-border text-text text-sm px-3 outline-none focus:ring-1 focus:ring-accent"
-                />
-              </div>
-              <div>
-                <label className="text-text2 text-sm block mb-1">
-                  <FieldLabel tip={t('groq_fallback_key_tip')}>{t('groq_fallback_key_label')}</FieldLabel>
-                </label>
-                <input
-                  type="password"
-                  value={kwKeys[1] ?? ''}
-                  onChange={(e) => setOneKwKey(1, e.target.value)}
-                  placeholder={t('groq_fallback_key_placeholder')}
                   className="w-full h-9 rounded-lg bg-input border border-border text-text text-sm px-3 outline-none focus:ring-1 focus:ring-accent"
                 />
               </div>

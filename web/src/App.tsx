@@ -129,6 +129,7 @@ function AppContent() {
       setMetadata(entry.id, emptyRecord(entry.name, settings.target_language));
     }
 
+    const everypixelWarnings: string[] = [];
     try {
       const hintText = hint.trim();
       for (let i = 0; i < toProcess.length; i++) {
@@ -161,9 +162,20 @@ function AppContent() {
           };
           [meta, { adobeEn, shutterEn, istockEn }] = await Promise.all([
             apiMetadata(b64, metaCreds, hintText, lang, geminiKey),
-            epTask().catch(async () => {
+            epTask().catch(async (epError) => {
+              const isLimit = epError instanceof Error &&
+                (epError.message.includes('429') || epError.message.includes('limit'));
+              everypixelWarnings.push(
+                isLimit
+                  ? `${entry.name}: Everypixels limiti doldu — Gemini ile üretiliyor`
+                  : `${entry.name}: Everypixels başarısız — Gemini ile üretiliyor`
+              );
               const f = await apiKeywordsAllPlatforms(b64, kwCreds, hintText, geminiKey);
-              return { adobeEn: f.slice(0, ADOBE_MAX), shutterEn: f.slice(0, SHUTTER_MAX), istockEn: mapIstock(f.slice(0, ISTOCK_MAX)) };
+              return {
+                adobeEn: f.slice(0, ADOBE_MAX),
+                shutterEn: f.slice(0, SHUTTER_MAX),
+                istockEn: mapIstock(f.slice(0, ISTOCK_MAX))
+              };
             })
           ]);
         } else {
@@ -207,6 +219,7 @@ function AppContent() {
           })();
         }
       }
+      if (everypixelWarnings.length > 0) setError(everypixelWarnings.join('\n'));
     } catch (e) { setError(e instanceof Error ? e.message : 'Generation failed'); }
     finally { setGenerating(false); setGeneratingProgress(null); }
   }, [files, selectedIds, currentEntry, settings, hint, mapIstock, setMetadata, updateMetadata, setCurrentFileId, videoFrameByFileId, t]);
