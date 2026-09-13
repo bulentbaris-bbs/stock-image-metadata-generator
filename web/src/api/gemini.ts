@@ -23,7 +23,12 @@ export async function geminiVision(
           { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${b64}` } },
           { type: 'text', text: prompt }
         ]
-      }]
+      }],
+      generationConfig: {
+        thinkingConfig: {
+          thinkingLevel: 'minimal'
+        }
+      }
     }),
     signal: AbortSignal.timeout(GEMINI_REQUEST_MS)
   });
