@@ -37,6 +37,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [metaKeys, setMetaKeys] = useState<string[]>(() => padKeys([]));
   const [kwKeys, setKwKeys] = useState<string[]>(() => padKeys([]));
   const [openRouterKey, setOpenRouterKey] = useState('');
+  const [geminiKey, setGeminiKey] = useState('');
   const [epId, setEpId] = useState('');
   const [epSecret, setEpSecret] = useState('');
   useEffect(() => {
@@ -44,6 +45,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       setMetaKeys(padKeys(settings.groq_api_keys_meta));
       setKwKeys(padKeys(settings.groq_api_keys_keywords));
       setOpenRouterKey(settings.openrouter_api_key);
+      setGeminiKey(settings.gemini_api_key ?? '');
       setEpId(settings.everypixels_id);
       setEpSecret(settings.everypixels_secret);
     }
@@ -64,6 +66,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       groq_api_keys_meta: metaKeys.map((k) => k.trim()).filter(Boolean),
       groq_api_keys_keywords: kwKeys.map((k) => k.trim()).filter(Boolean),
       openrouter_api_key: openRouterKey.trim(),
+      gemini_api_key: geminiKey.trim(),
       everypixels_id: epId.trim(),
       everypixels_secret: epSecret.trim(),
     });
@@ -112,6 +115,18 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                   value={openRouterKey}
                   onChange={(e) => setOpenRouterKey(e.target.value)}
                   placeholder={t('openrouter_placeholder')}
+                  className="w-full h-9 rounded-lg bg-input border border-border text-text text-sm px-3 outline-none focus:ring-1 focus:ring-accent"
+                />
+              </div>
+              <div>
+                <label className="text-text2 text-sm block mb-1">
+                  <FieldLabel tip={t('gemini_key_tip')}>{t('gemini_key_label')}</FieldLabel>
+                </label>
+                <input
+                  type="password"
+                  value={geminiKey}
+                  onChange={(e) => setGeminiKey(e.target.value)}
+                  placeholder={t('gemini_key_placeholder')}
                   className="w-full h-9 rounded-lg bg-input border border-border text-text text-sm px-3 outline-none focus:ring-1 focus:ring-accent"
                 />
               </div>

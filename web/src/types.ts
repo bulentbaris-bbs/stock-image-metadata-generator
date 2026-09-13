@@ -33,6 +33,8 @@ export interface Settings {
   everypixels_secret: string;
   /** Optional fallback used only once every Groq key is rate-limited (routed through openrouter/auto). */
   openrouter_api_key: string;
+  /** Optional — used for title/description/keyword vision instead of Groq when set. */
+  gemini_api_key: string;
   /** Secondary output language code (see lib/languages.ts); English is always generated as the base. */
   target_language: string;
 }

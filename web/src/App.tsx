@@ -110,6 +110,7 @@ function AppContent() {
     initMetaKeyPool(metaGroqKeys);
     initKwKeyPool(kwGroqKeys);
     const openRouterKey = settings.openrouter_api_key?.trim();
+    const geminiKey = settings.gemini_api_key?.trim() || undefined;
     const lang = getLanguage(settings.target_language);
     const englishOnly = isEnglishOnly(lang);
     const metaCreds: GroqOnlyCreds = { groqKeys: metaGroqKeys, lang: lang.code as UILang };
@@ -151,7 +152,7 @@ function AppContent() {
             let sEn = allKw.slice(0, SHUTTER_MAX);
             let iEn = mapIstock(allKw.slice(0, ISTOCK_MAX));
             if (aEn.length < ADOBE_MAX || sEn.length < SHUTTER_MAX || iEn.length < ISTOCK_MAX) {
-              const groqKw = await apiKeywordsAllPlatforms(b64, kwCreds, hintText);
+              const groqKw = await apiKeywordsAllPlatforms(b64, kwCreds, hintText, geminiKey);
               aEn = fillKeywordsToMax(aEn, ADOBE_MAX, groqKw);
               sEn = fillKeywordsToMax(sEn, SHUTTER_MAX, groqKw);
               iEn = fillKeywordsToMax(iEn, ISTOCK_MAX, mapIstock(groqKw));
@@ -159,16 +160,16 @@ function AppContent() {
             return { adobeEn: aEn, shutterEn: sEn, istockEn: iEn };
           };
           [meta, { adobeEn, shutterEn, istockEn }] = await Promise.all([
-            apiMetadata(b64, metaCreds, hintText, lang),
+            apiMetadata(b64, metaCreds, hintText, lang, geminiKey),
             epTask().catch(async () => {
-              const f = await apiKeywordsAllPlatforms(b64, kwCreds, hintText);
+              const f = await apiKeywordsAllPlatforms(b64, kwCreds, hintText, geminiKey);
               return { adobeEn: f.slice(0, ADOBE_MAX), shutterEn: f.slice(0, SHUTTER_MAX), istockEn: mapIstock(f.slice(0, ISTOCK_MAX)) };
             })
           ]);
         } else {
           const [resMeta, rawKw] = await Promise.all([
-            apiMetadata(b64, metaCreds, hintText, lang),
-            apiKeywordsAllPlatforms(b64, kwCreds, hintText),
+            apiMetadata(b64, metaCreds, hintText, lang, geminiKey),
+            apiKeywordsAllPlatforms(b64, kwCreds, hintText, geminiKey),
           ]);
           meta = resMeta;
           adobeEn = rawKw.slice(0, ADOBE_MAX);
@@ -223,7 +224,8 @@ function AppContent() {
     try {
       const b64 = await fileToBase64Jpeg(currentEntry.file, videoFrameByFileId[currentEntry.id]);
       const lang = getLanguage(settings.target_language);
-      const meta = await apiMetadata(b64, { groqKeys, lang: lang.code as UILang }, (hint.trim() + existingContext).trim(), lang);
+      const geminiKey = settings.gemini_api_key?.trim() || undefined;
+      const meta = await apiMetadata(b64, { groqKeys, lang: lang.code as UILang }, (hint.trim() + existingContext).trim(), lang, geminiKey);
       
       const payload: Partial<MetadataRecord> = { title_en: meta.title_en, description_en: meta.description_en };
       

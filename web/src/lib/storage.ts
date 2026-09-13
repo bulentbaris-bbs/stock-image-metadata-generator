@@ -10,6 +10,7 @@ const DEFAULT_SETTINGS: Settings = {
   everypixels_id: '',
   everypixels_secret: '',
   openrouter_api_key: '',
+  gemini_api_key: '',
   target_language: DEFAULT_SECONDARY_LANG,
 };
 const SETTINGS_KEY = 'stock_metadata_settings';
@@ -56,6 +57,7 @@ export function loadSettings(): Settings {
     ...parsed,
     groq_api_keys_meta: parsed.groq_api_keys_meta ?? DEFAULT_SETTINGS.groq_api_keys_meta,
     groq_api_keys_keywords: parsed.groq_api_keys_keywords ?? DEFAULT_SETTINGS.groq_api_keys_keywords,
+    gemini_api_key: parsed.gemini_api_key ?? '',
   };
   // Migrate from the old shared key list: both groups start out with the same keys the user already had.
   if (merged.groq_api_keys_meta.length === 0 && merged.groq_api_keys_keywords.length === 0) {

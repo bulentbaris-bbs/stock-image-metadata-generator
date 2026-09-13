@@ -322,6 +322,27 @@ const STRINGS: Record<string, Dict> = {
     ru: 'sk-or-... — используется, когда все ключи Groq исчерпаны',
     zh: 'sk-or-...——所有 Groq 密钥用尽后启用',
   },
+  gemini_key_label: {
+    en: 'Gemini API Key', tr: 'Gemini API Key', de: 'Gemini-API-Key', es: 'Clave API de Gemini', fr: 'Clé API Gemini', ru: 'API-ключ Gemini', zh: 'Gemini API 密钥',
+  },
+  gemini_key_placeholder: {
+    en: 'Gemini API key (title & description + keywords)',
+    tr: 'Gemini API key (başlık & açıklama + keyword)',
+    de: 'Gemini-API-Key (Titel & Beschreibung + Keywords)',
+    es: 'Clave API de Gemini (título y descripción + palabras clave)',
+    fr: 'Clé API Gemini (titre et description + mots-clés)',
+    ru: 'API-ключ Gemini (заголовок и описание + ключевые слова)',
+    zh: 'Gemini API 密钥（标题和描述 + 关键词）',
+  },
+  gemini_key_tip: {
+    en: 'Used for title, description, and keyword generation. Falls back to Groq if left empty. Get a key at aistudio.google.com.',
+    tr: 'Başlık, açıklama ve anahtar kelime üretimi için kullanılır. Gemini girilmezse Groq ile üretilir. aistudio.google.com adresinden key alabilirsiniz.',
+    de: 'Wird für Titel, Beschreibung und Keyword-Generierung verwendet. Ohne Eingabe wird Groq verwendet. Key unter aistudio.google.com erhältlich.',
+    es: 'Se usa para generar título, descripción y palabras clave. Si se deja vacío, se usa Groq. Obtén una clave en aistudio.google.com.',
+    fr: "Utilisé pour générer le titre, la description et les mots-clés. Groq est utilisé si laissé vide. Obtenez une clé sur aistudio.google.com.",
+    ru: 'Используется для генерации заголовка, описания и ключевых слов. Если поле пустое, используется Groq. Ключ можно получить на aistudio.google.com.',
+    zh: '用于生成标题、描述和关键词。留空则使用 Groq。可在 aistudio.google.com 获取密钥。',
+  },
   ep_id_label: {
     en: 'Everypixels Client ID', tr: 'Everypixels Client ID', de: 'Everypixels Client-ID', es: 'Everypixels Client ID', fr: 'Everypixels Client ID', ru: 'Everypixels Client ID', zh: 'Everypixels 客户端 ID',
   },

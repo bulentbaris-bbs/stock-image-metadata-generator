@@ -1,3 +1,4 @@
+import { geminiVision } from './gemini';
 import { openRouterText, openRouterVision } from './openrouter';
 import { translate, type UILang } from '../lib/i18n';
 import { KeyPool } from '../lib/keyPool';
@@ -478,12 +479,16 @@ export async function apiMetadata(
   b64: string,
   creds: AiCreds,
   hint: string,
-  lang: SecondaryLanguage
+  lang: SecondaryLanguage,
+  geminiKey?: string
 ): Promise<{ title_en: string; title_secondary: string; description_en: string; description_secondary: string }> {
   const prompt = buildMetadataVisionPrompt(hint, lang);
   const jsonRetrySuffix =
     '\n\nCRITICAL: Your entire reply must be ONE JSON object only, starting with { and ending with }. Keys: title_en, title_secondary, description_en, description_secondary. No markdown, no thinking tags, no other text.';
-  const raw = await groqVision(b64, prompt + jsonRetrySuffix, creds, 1200);
+  // Gemini varsa Gemini kullan, yoksa Groq
+  const raw = geminiKey
+    ? await geminiVision(b64, prompt + jsonRetrySuffix, geminiKey, 1200)
+    : await groqVision(b64, prompt + jsonRetrySuffix, creds, 1200);
   let jsonStr = extractFirstJsonObject(raw);
   if (!jsonStr && raw.trim()) {
     jsonStr = await repairMetadataJsonWithText(creds, raw);
@@ -636,11 +641,14 @@ export async function apiKeywords(
 export async function apiKeywordsAllPlatforms(
   b64: string,
   creds: AiCreds,
-  hint = ''
+  hint = '',
+  geminiKey?: string
 ): Promise<string[]> {
   const hintTxt = hint.trim() ? `\nExtra Context / User Note (PRIORITY KEYWORDS): ${hint}` : '';
   const prompt = KEYWORDS_PROMPT.replace('{platform}', KEYWORDS_ALL_PLATFORMS).replace('{hint}', hintTxt);
-  const raw = await groqVision(b64, prompt, creds, 900);
+  const raw = geminiKey
+    ? await geminiVision(b64, prompt, geminiKey, 900)
+    : await groqVision(b64, prompt, creds, 900);
   return topUpKeywords(parseKeywordCsv(raw), creds, hint);
 }
 
