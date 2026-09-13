@@ -1,5 +1,5 @@
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
-const GEMINI_VISION_MODEL = 'gemini-2.5-flash';
+const GEMINI_VISION_MODEL = 'gemini-3.6-flash';
 const GEMINI_REQUEST_MS = 60000;
 
 export async function geminiVision(
